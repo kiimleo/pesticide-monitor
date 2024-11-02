@@ -4,6 +4,18 @@ const API_BASE_URL = 'http://localhost:8000/api';
 const PUBCHEM_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 
 export const api = {
+  // 회원가입
+  signup: async (userData) => {
+    const response = await fetch('http://localhost:8000/api/users/signup/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData)
+    });
+    return response.json();
+  },
+  
   // 농약 목록 조회
   getPesticides: async (params) => {
     const response = await axios.get(`${API_BASE_URL}/pesticides/`, { params });

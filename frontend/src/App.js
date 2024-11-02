@@ -1,11 +1,12 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import SignupForm from './components/SignupForm';
 import React, { useState } from 'react';
-import { Container, Typography, Alert, Box, CircularProgress } from '@mui/material';  // 한 줄로 통합
+import { Container, Typography, Alert, Box, CircularProgress } from '@mui/material';
 import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
 
-
-function App() {
+function MainContent() {  // 기존 메인 페이지 컴포넌트로 분리
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +21,6 @@ function App() {
       setLoading(true);
       setError(null);
       
-      // 두 조건 모두로 검색
       const params = {
         pesticide: filters.pesticide,
         food: filters.food
@@ -29,7 +29,6 @@ function App() {
       const data = await api.getPesticides(params);
       setPesticides(data);
 
-      // 결과가 없는 경우 메시지 표시
       if (data.length === 0) {
         setError('해당하는 잔류허용기준이 없습니다.');
       }
@@ -71,4 +70,16 @@ function App() {
     </Container>
   );
 }
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainContent />} />
+        <Route path="/signup" element={<SignupForm />} />
+      </Routes>
+    </Router>
+  );
+}
+
 export default App;
