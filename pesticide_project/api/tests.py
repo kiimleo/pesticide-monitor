@@ -1,32 +1,24 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import User
-from .serializers import UserSerializer
+def _log_search(self, pesticide, food):
+    """검색 로그를 기록하는 내부 메서드"""
+    # 클라이언트 IP 가져오기
+    x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = self.request.META.get('REMOTE_ADDR')
 
+    # 검색어 조합
+    search_term = f"농약: {pesticide if pesticide else '-'}, 식품: {food if food else '-'}"
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    # 검색 결과 개수 확인
+    results_count = self.get_queryset().count()
 
-    def get_permissions(self):
-        if self.action in ['create', 'signup']:
-            return [AllowAny()]
-        return [IsAuthenticated()]
-
-    @action(detail=False, methods=['post'])
-    def signup(self, request):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                'message': '회원가입이 완료되었습니다.',
-                'user': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['get'])
-    def me(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+    # 검색 로그 저장
+    SearchLog.objects.create(
+        search_term=search_term,
+        pesticide_term=pesticide,          # 농약명 입력
+        food_term=food,                    # 식품명 입력
+        results_count=results_count,       # 검색 결과 개수 입력
+        ip_address=ip,
+        user_agent=self.request.META.get('HTTP_USER_AGENT')
+    )

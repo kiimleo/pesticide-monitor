@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';  // useRef 추가
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
   TableBody,
@@ -17,10 +17,14 @@ import {
   ToggleButton,
   ToggleButtonGroup
 } from '@mui/material';
-import { api } from '../services/api';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Fullscreen as FullscreenIcon, ThreeDRotation } from '@mui/icons-material';
+import { api } from '../services/api';
 
+// 환경변수 설정
+const API_URL = process.env.REACT_APP_API_URL || '';
+
+// formatResidueLimit 함수 정의
 const formatResidueLimit = (value) => {
   const truncated = Math.floor(value * 100) / 100;
   if (truncated.toFixed(2).endsWith('0')) {
@@ -29,6 +33,7 @@ const formatResidueLimit = (value) => {
   return truncated.toFixed(2);
 };
 
+// PesticideTable 컴포넌트
 const PesticideTable = ({ pesticides }) => {
   const [structureUrl, setStructureUrl] = useState(null);
   const [structure3D, setStructure3D] = useState(null);
@@ -80,6 +85,37 @@ const PesticideTable = ({ pesticides }) => {
     
     fetchStructures();
   }, [pesticides]);
+
+  // 새로 추가하는 검색 로그용 useEffect
+  useEffect(() => {
+    const logSearchResults = async () => {
+      if (pesticides.length > 0) {
+        try {
+          // 검색어 정보 추출
+          const pesticide = pesticides[0].pesticide_name_kr;
+          const food = pesticides[0].food_name;
+          
+          // 검색 결과 로그 전송
+          await fetch(`${API_URL}/api/pesticide-limits/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              pesticide_term: pesticide,
+              food_term: food,
+              results_count: pesticides.length
+            })
+          });
+        } catch (error) {
+          console.error('Error logging search results:', error);
+        }
+      }
+    };
+
+    logSearchResults();
+  }, [pesticides]);
+
 
   // 일반 화면용 3D 뷰어 초기화
   useEffect(() => {
@@ -149,6 +185,19 @@ const PesticideTable = ({ pesticides }) => {
   return (
     <Box sx={{ mt: 3 }}>
       <Grid container spacing={3}>
+        {/* 검색 결과 수 표시 - 최상단에 추가 */}
+        <Grid item xs={12}>
+          {pesticides.length > 0 && (
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle2" color="textSecondary">
+                  검색 결과: 총 {pesticides.length}건
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+
         <Grid item xs={12} md={4}>
           <Card sx={{ bgcolor: 'white' }}>
             <CardContent>

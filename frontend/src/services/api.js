@@ -36,14 +36,11 @@ export const api = {
     return response.data;
   },
 
-  // PubChem API 함수 추가
+  // PubChem API 함수
   getChemicalStructure: async (compoundName) => {
     try {
-      // 먼저 compound 정보 검색
       const response = await axios.get(`${PUBCHEM_BASE_URL}/compound/name/${encodeURIComponent(compoundName)}/property/IUPACName,CanonicalSMILES/JSON`);
       const cid = response.data.PropertyTable.Properties[0].CID;
-      
-      // 구조식 이미지 URL 반환
       return `${PUBCHEM_BASE_URL}/compound/cid/${cid}/PNG`;
     } catch (error) {
       console.error('Chemical structure fetch error:', error);
@@ -51,14 +48,11 @@ export const api = {
     }
   },
 
-  // 새로 추가하는 3D 구조 관련 함수들
+  // 3D 구조 관련 함수들
   get3DStructure: async (compoundName) => {
     try {
-      // 1. 먼저 CID 얻기
       const response = await axios.get(`${PUBCHEM_BASE_URL}/compound/name/${encodeURIComponent(compoundName)}/property/IUPACName,CanonicalSMILES/JSON`);
       const cid = response.data.PropertyTable.Properties[0].CID;
-      
-      // 2. 3D SDF 형식으로 구조 데이터 가져오기
       const sdfResponse = await axios.get(`${PUBCHEM_BASE_URL}/compound/cid/${cid}/record/SDF/?record_type=3d&response_type=display`);
       return sdfResponse.data;
     } catch (error) {
@@ -67,7 +61,6 @@ export const api = {
     }
   },
 
-  // CID로 직접 3D 구조 가져오기 (선택적)
   get3DStructureByCID: async (cid) => {
     try {
       const response = await axios.get(`${PUBCHEM_BASE_URL}/compound/cid/${cid}/record/SDF/?record_type=3d&response_type=display`);
@@ -75,6 +68,32 @@ export const api = {
     } catch (error) {
       console.error('3D structure fetch error:', error);
       return null;
+    }
+  },
+
+  // 검색 결과 로깅
+  logSearch: async (pesticide, food, resultsCount) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/pesticides/`, {
+        pesticide_term: pesticide,
+        food_term: food,
+        results_count: resultsCount
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error logging search:', error);
+      throw error;
+    }
+  },
+
+  // 검색 통계 조회
+  getSearchStatistics: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/search_statistics/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      throw error;
     }
   }
 };

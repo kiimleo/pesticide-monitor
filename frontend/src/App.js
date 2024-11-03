@@ -5,6 +5,7 @@ import { Container, Typography, Alert, Box, CircularProgress } from '@mui/materi
 import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
+import SearchStatistics from './components/SearchStatistics';
 
 function MainContent() {  // 기존 메인 페이지 컴포넌트로 분리
   const [pesticides, setPesticides] = useState([]);
@@ -43,7 +44,7 @@ function MainContent() {  // 기존 메인 페이지 컴포넌트로 분리
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom align="center">
-        농약 잔류허용기준 검색
+        잔류농약 허용기준 검색
       </Typography>
       
       <Box sx={{ mb: 3, textAlign: 'right' }}>
@@ -77,9 +78,11 @@ function App() {
       <Routes>
         <Route path="/" element={<MainContent />} />
         <Route path="/signup" element={<SignupForm />} />
+        <Route path="/statistics" element={<SearchStatistics />} />
       </Routes>
     </Router>
   );
 }
+
 
 export default App;
