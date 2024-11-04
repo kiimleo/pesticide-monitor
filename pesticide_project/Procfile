@@ -1,0 +1,1 @@
+web: gunicorn pesticide_project.wsgi --log-file -
