@@ -1,1 +1,1 @@
-web: python -m waitress --port=$PORT pesticide_project.wsgi:application
+web: python manage.py runserver 0.0.0.0:$PORT
