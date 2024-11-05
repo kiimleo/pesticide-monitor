@@ -1,1 +1,1 @@
-python -m gunicorn --chdir pesticide_project pesticide_project.wsgi:application --log-file - --bind 0.0.0.0:$PORT
+web: gunicorn --chdir pesticide_project pesticide_project.wsgi:application --log-file - --bind 0.0.0.0:$PORT
