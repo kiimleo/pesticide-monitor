@@ -1,1 +1,1 @@
-web: /bin/sh -c "python manage.py runserver 0.0.0.0:$PORT"
+web: waitress-serve --port=$PORT pesticide_project.pesticide_project.wsgi:application
