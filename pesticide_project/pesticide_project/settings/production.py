@@ -73,3 +73,5 @@ LOGGING = {
         },
     },
 }
+
+ROOT_URLCONF = 'pesticide_project.urls'

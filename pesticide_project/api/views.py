@@ -10,6 +10,7 @@ from .models import User, SearchLog
 from rest_framework.filters import SearchFilter
 from .models import LimitConditionCode, PesticideLimit
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
+from django.http import HttpResponse
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -124,3 +125,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         }
 
         return Response(stats)
+
+def index(request):
+    """루트 경로에 접근할 때 표시되는 기본 인덱스 뷰"""
+    return HttpResponse("Welcome to the pesticide monitoring application!")

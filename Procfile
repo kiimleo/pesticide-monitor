@@ -1,1 +1,1 @@
-web: cd pesticide_project && gunicorn pesticide_project.wsgi:application --log-file - --bind 0.0.0.0:$PORT
+web: waitress-serve --port=$PORT pesticide_project.pesticide_project.wsgi:application

@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet
+from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet, index  # index 뷰를 가져옵니다.
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -28,4 +28,5 @@ urlpatterns = [
     path('api/auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
+    path('', index, name='index'),  # 루트 URL에 대한 경로 추가
 ]
