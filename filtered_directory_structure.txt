@@ -1,0 +1,103 @@
+📁 .idea
+  📁 inspectionProfiles
+📄 filtered_directory_structure.txt (.txt)
+📁 frontend
+  📁 .idea
+    📁 inspectionProfiles
+  📁 public
+    📄 robots.txt (.txt)
+  📁 src
+    📁 components
+    📁 pages
+    📁 services
+    📁 utils
+📁 pesticide_project
+  📁 .idea
+    📁 inspectionProfiles
+  📁 api
+    📄 admin.py (.py)
+    📄 apps.py (.py)
+    📄 filtered_directory_structure.txt (.txt)
+    📁 migrations
+      📄 0001_initial.py (.py)
+      📄 0002_user.py (.py)
+      📄 0003_auto_20241103_1714.py (.py)
+      📄 __init__.py (.py)
+      📁 __pycache__
+    📄 models.py (.py)
+    📄 serializers.py (.py)
+    📄 tests.py (.py)
+    📄 tree_make.py (.py)
+    📄 views.py (.py)
+    📄 __init__.py (.py)
+    📁 __pycache__
+  📄 manage.py (.py)
+  📁 pesticide_project
+    📄 asgi.py (.py)
+    📁 settings
+      📄 base.py (.py)
+      📄 local.py (.py)
+      📄 production.py (.py)
+      📄 __init__.py (.py)
+      📁 __pycache__
+    📄 temp.txt (.txt)
+    📄 urls.py (.py)
+    📄 wsgi.py (.py)
+    📄 __init__.py (.py)
+    📁 __pycache__
+  📄 runtime.txt (.txt)
+  📁 staticfiles
+    📁 admin
+      📁 css
+      📁 fonts
+      📁 img
+      📁 js
+    📁 rest_framework
+      📁 css
+      📁 docs
+      📁 fonts
+      📁 img
+      📁 js
+📁 pesticide_venv
+  📁 Include
+  📁 Lib
+    📁 site-packages
+      📁 asgiref
+      📁 asgiref-3.7.2.dist-info
+      📁 corsheaders
+      📁 debug_toolbar
+      📁 django
+      📁 Django-3.2.25.dist-info
+      📁 djangorestframework-3.12.4.dist-info
+      📁 django_cors_headers-3.10.1.dist-info
+      📁 django_debug_toolbar-3.2.4.dist-info
+      📁 dj_database_url-1.0.0.dist-info
+      📄 dj_database_url.py (.py)
+      📁 dotenv
+      📄 easy_install.py (.py)
+      📁 gunicorn
+      📁 gunicorn-20.1.0.dist-info
+      📁 pip
+      📁 pip-24.0.dist-info
+      📁 pkg_resources
+      📁 psycopg2
+      📁 psycopg2_binary-2.9.9.dist-info
+      📁 python_dotenv-0.21.1.dist-info
+      📁 pytz
+      📁 pytz-2024.2.dist-info
+      📁 rest_framework
+      📁 setuptools
+      📁 setuptools-41.2.0.dist-info
+      📁 sqlparse
+      📁 sqlparse-0.4.4.dist-info
+      📁 typing_extensions-4.7.1.dist-info
+      📄 typing_extensions.py (.py)
+      📁 waitress
+      📁 waitress-2.1.2.dist-info
+      📁 whitenoise
+      📁 whitenoise-5.3.0.dist-info
+      📁 __pycache__
+  📁 Scripts
+    📄 django-admin.py (.py)
+    📁 __pycache__
+📄 requirements.txt (.txt)

@@ -1,1 +1,1 @@
-web: python manage.py runserver 0.0.0.0:$PORT
+web: pip install waitress && waitress-serve --port=$PORT pesticide_project.wsgi:application
