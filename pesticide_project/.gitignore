@@ -21,7 +21,7 @@ coverage.xml
 .pytest_cache/
 .python-version
 pesticide_project/api/tests.py
-
+filtered_directory_structure.txt
 
 # Django
 *.log
