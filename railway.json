@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "waitress-serve --port=$PORT pesticide_project.wsgi:application",
+    "startCommand": "python -c 'from waitress import serve; from pesticide_project.wsgi import application; serve(application, port=int(\"$PORT\"))'",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
