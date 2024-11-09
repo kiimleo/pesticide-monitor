@@ -17,13 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet, index, health_check  # 필요한 항목 추가
+from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet, index, health_check
+from django.conf import settings
+
+# Debug Toolbar import 추가
+if settings.DEBUG:
+    import debug_toolbar
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'conditions', LimitConditionCodeViewSet)
 router.register(r'pesticides', PesticideLimitViewSet)
 
+# urlpatterns 초기화
 urlpatterns = [
     path('health/', health_check),
     path('api/auth/', include('rest_framework.urls')),
@@ -31,3 +37,9 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('', index, name='index'),  # 루트 URL에 대한 경로 추가
 ]
+
+# DEBUG 모드에서만 Debug Toolbar 추가
+if settings.DEBUG:
+    urlpatterns = [
+        path('__debug__/', include(debug_toolbar.urls)),
+    ] + urlpatterns
