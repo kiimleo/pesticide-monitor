@@ -44,3 +44,8 @@ staticfiles/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Docker
+Dockerfile.local
+docker-compose*.yml
+.docker/
