@@ -45,7 +45,6 @@
     📄 wsgi.py (.py)
     📄 __init__.py (.py)
     📁 __pycache__
-  📄 runtime.txt (.txt)
   📁 staticfiles
     📁 admin
       📁 css
@@ -101,3 +100,4 @@
     📄 django-admin.py (.py)
     📁 __pycache__
 📄 requirements.txt (.txt)
+📄 runtime.txt (.txt)
