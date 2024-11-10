@@ -31,8 +31,7 @@
     📄 views.py (.py)
     📄 __init__.py (.py)
     📁 __pycache__
-  📄 manage.py (.py)
-  📁 pesticide_project
+  📁 config
     📄 asgi.py (.py)
     📁 settings
       📄 base.py (.py)
@@ -45,11 +44,16 @@
     📄 wsgi.py (.py)
     📄 __init__.py (.py)
     📁 __pycache__
+  📄 manage.py (.py)
+  📁 static
   📁 staticfiles
     📁 admin
       📁 css
       📁 fonts
       📁 img
+      📁 js
+    📁 debug_toolbar
+      📁 css
       📁 js
     📁 rest_framework
       📁 css
