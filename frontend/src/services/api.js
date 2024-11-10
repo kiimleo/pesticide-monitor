@@ -8,7 +8,7 @@ const PUBCHEM_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 export const api = {
   // 회원가입
   signup: async (userData) => {
-    const response = await fetch('http://localhost:8000/api/users/signup/', {
+    const response = await fetch(`${API_BASE_URL}/users/signup/`, {  // URL 수정
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -20,8 +20,16 @@ export const api = {
   
   // 농약 목록 조회
   getPesticides: async (params) => {
-    const response = await axios.get(`${API_BASE_URL}/pesticides/`, { params });
-    return response.data;
+    console.log('Making request to:', `${API_BASE_URL}/pesticides/`);  // 추가된 로그
+    console.log('With params:', params);  // 추가된 로그
+    try {  // try-catch 추가
+      const response = await axios.get(`${API_BASE_URL}/pesticides/`, { params });
+      console.log('Response:', response);  // 추가된 로그
+      return response.data;
+    } catch (error) {
+      console.error('Error in getPesticides:', error);  // 추가된 로그
+      throw error;
+    }
   },
 
   // 조건 코드 목록 조회
