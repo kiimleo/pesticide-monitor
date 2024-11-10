@@ -10,6 +10,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '[::1]',
     '.railway.app',  # Railway 도메인
+    '.onrender.com',  # Render 도메인 추가
     *os.getenv('ALLOWED_HOSTS', '').split(',')  # 추가 도메인이 있는 경우
 ]
 
