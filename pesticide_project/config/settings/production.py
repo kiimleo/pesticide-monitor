@@ -74,4 +74,4 @@ LOGGING = {
     },
 }
 
-ROOT_URLCONF = 'pesticide_project.urls'
+ROOT_URLCONF = 'config.urls'
