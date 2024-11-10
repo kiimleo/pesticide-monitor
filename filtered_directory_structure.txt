@@ -20,8 +20,6 @@
     📄 filtered_directory_structure.txt (.txt)
     📁 migrations
       📄 0001_initial.py (.py)
-      📄 0002_user.py (.py)
-      📄 0003_auto_20241103_1714.py (.py)
       📄 __init__.py (.py)
       📁 __pycache__
     📄 models.py (.py)
