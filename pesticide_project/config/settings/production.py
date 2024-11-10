@@ -52,9 +52,11 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'https://pesticide-monitor.vercel.app',  # 실제 Vercel URL로 교체
-    'https://pesticide-monitor-gf1vd9s9s-kiimleos-projects.vercel.app', # 배포 프리뷰 도메인, 배포마다 생성되는 고유한 임시 URL, 테스트/프리뷰 용도
-    os.getenv('FRONTEND_URL', ''),
 ]
+
+# FRONTEND_URL 환경변수가 설정되어 있을 때만 추가
+if os.getenv('FRONTEND_URL'):
+    CORS_ALLOWED_ORIGINS.append(os.getenv('FRONTEND_URL'))
 
 # 로깅 설정
 LOGGING = {
