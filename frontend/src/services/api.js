@@ -45,11 +45,19 @@ export const api = {
 
   // 농약 검색
   searchPesticides: async (query) => {
-    const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
-      params: { search: query }
-    });
-    return response.data;
+    console.log('Search query:', query);  // 검색 쿼리 확인
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
+        params: { search: query }
+      });
+      console.log('Search response:', response.data);  // 응답 데이터 확인
+      return response.data;
+    } catch (error) {
+      console.error('Search error:', error.response || error);  // 에러 상세 정보 확인
+      throw error;
+    }
   },
+
 
   // PubChem API 함수
   getChemicalStructure: async (compoundName) => {
