@@ -6,7 +6,11 @@ console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-console.log('API_BASE_URL:', API_BASE_URL);
+console.log('API Configuration:', {
+  API_BASE_URL,
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL
+});
 const PUBCHEM_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 
 
@@ -23,19 +27,25 @@ export const api = {
     return response.json();
   },
   
-  // 농약 목록 조회
-  getPesticides: async (params) => {
-    console.log('Making request to:', `${API_BASE_URL}/pesticides/`);  // 추가된 로그
-    console.log('With params:', params);  // 추가된 로그
-    try {  // try-catch 추가
-      const response = await axios.get(`${API_BASE_URL}/pesticides/`, { params });
-      console.log('Response:', response);  // 추가된 로그
-      return response.data;
-    } catch (error) {
-      console.error('Error in getPesticides:', error);  // 추가된 로그
-      throw error;
-    }
-  },
+// 농약 목록 조회
+getPesticides: async (params) => {
+  console.log('Making request to:', `${API_BASE_URL}/pesticides/`);
+  console.log('With params:', { pesticide: params.pesticide, food: params.food });
+  try {
+    const response = await axios.get(`${API_BASE_URL}/pesticides/`, { 
+      params: {
+        pesticide: params.pesticide,
+        food: params.food
+      }
+    });
+    console.log('Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in getPesticides:', error);
+    throw error;
+  }
+},
+
 
   // 조건 코드 목록 조회
   getConditions: async () => {
@@ -44,19 +54,22 @@ export const api = {
   },
 
   // 농약 검색
-  searchPesticides: async (query) => {
-    console.log('Search query:', query);  // 검색 쿼리 확인
+  searchPesticides: async ({ pesticide, food }) => {
+    console.log('Search parameters:', { pesticide, food }); // 검색 쿼리 확인
     try {
       const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
-        params: { search: query }
+        params: {
+          pesticide: pesticide,
+          food: food
+        }
       });
-      console.log('Search response:', response.data);  // 응답 데이터 확인
+      console.log('Search response:', response.data); // 응답 데이터 확인
       return response.data;
     } catch (error) {
-      console.error('Search error:', error.response || error);  // 에러 상세 정보 확인
+      console.error('Search error:', error.response?.data || error);  // 에러 상세 정보 확인
       throw error;
     }
-  },
+},
 
 
   // PubChem API 함수
