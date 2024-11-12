@@ -4,6 +4,11 @@
 📁 frontend
   📁 .idea
     📁 inspectionProfiles
+  📁 build
+    📄 robots.txt (.txt)
+    📁 static
+      📁 css
+      📁 js
   📁 public
     📄 robots.txt (.txt)
   📁 src
@@ -42,6 +47,7 @@
     📄 wsgi.py (.py)
     📄 __init__.py (.py)
     📁 __pycache__
+  📄 dump_data.py (.py)
   📄 manage.py (.py)
   📁 static
   📁 staticfiles
