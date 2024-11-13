@@ -141,24 +141,19 @@ def health_check(request):
 @csrf_exempt
 def create_admin(request):
     try:
-        print("Starting admin creation process...")  # 로깅 추가
+        print("Starting admin creation process...")
         User = get_user_model()
-        print(f"Got user model: {User}")  # 로깅 추가
 
         if not User.objects.filter(email='3brothers_daddy@naver.com').exists():
-            print("Creating new admin user...")  # 로깅 추가
             user = User.objects.create_superuser(
+                username='admin',  # username 추가
                 email='3brothers_daddy@naver.com',
                 password='원하는비밀번호'
             )
-            print(f"Admin user created: {user}")  # 로깅 추가
             return JsonResponse({"message": "Admin user created successfully"})
-
-        print("Admin user already exists")  # 로깅 추가
         return JsonResponse({"message": "Admin user already exists"})
 
     except Exception as e:
-        print(f"Error occurred: {str(e)}")  # 에러 로깅 추가
         return JsonResponse({
             "error": str(e),
             "type": type(e).__name__
