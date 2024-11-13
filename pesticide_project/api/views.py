@@ -13,6 +13,9 @@ from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
 from django.http import HttpResponse
 from django.http import JsonResponse
 
+from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -133,3 +136,14 @@ def index(request):
 
 def health_check(request):
     return JsonResponse({"status": "ok"}, status=200)
+
+@csrf_exempt
+def create_admin(request):
+    User = get_user_model()
+    if not User.objects.filter(email='3brothers_daddy@naver.com').exists():
+        User.objects.create_superuser(
+            email='3brothers_daddy@naver.com',
+            password='원하는비밀번호'
+        )
+        return JsonResponse({"message": "Admin user created successfully"})
+    return JsonResponse({"message": "Admin user already exists"})

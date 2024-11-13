@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet, index, health_check
+from api.views import LimitConditionCodeViewSet, PesticideLimitViewSet, UserViewSet, index, health_check, create_admin
 from django.conf import settings
 
 # Debug Toolbar import 추가
@@ -36,6 +36,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('', index, name='index'),  # 루트 URL에 대한 경로 추가
+    path('create-admin/', create_admin, name='create_admin'),
 ]
 
 # DEBUG 모드에서만 Debug Toolbar 추가
