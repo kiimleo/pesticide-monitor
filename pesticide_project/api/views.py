@@ -144,7 +144,7 @@ def create_admin(request):
         print("Starting admin creation process...")
         User = get_user_model()
 
-        if not User.objects.filter(email='3brothers_daddy@naver.com').exists():
+        if not User.objects.filter(email='challaforce@gmail.com').exists():
             user = User.objects.create_superuser(
                 username='admin',  # username 추가
                 email='challaforce@gmail.com',
