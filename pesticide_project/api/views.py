@@ -148,7 +148,7 @@ def create_admin(request):
             user = User.objects.create_superuser(
                 username='admin',  # username 추가
                 email='3brothers_daddy@naver.com',
-                password='원하는비밀번호'
+                password='!q2w3e4r5t'
             )
             return JsonResponse({"message": "Admin user created successfully"})
         return JsonResponse({"message": "Admin user already exists"})
