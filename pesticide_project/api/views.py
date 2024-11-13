@@ -137,13 +137,29 @@ def index(request):
 def health_check(request):
     return JsonResponse({"status": "ok"}, status=200)
 
+
 @csrf_exempt
 def create_admin(request):
-    User = get_user_model()
-    if not User.objects.filter(email='3brothers_daddy@naver.com').exists():
-        User.objects.create_superuser(
-            email='3brothers_daddy@naver.com',
-            password='원하는비밀번호'
-        )
-        return JsonResponse({"message": "Admin user created successfully"})
-    return JsonResponse({"message": "Admin user already exists"})
+    try:
+        print("Starting admin creation process...")  # 로깅 추가
+        User = get_user_model()
+        print(f"Got user model: {User}")  # 로깅 추가
+
+        if not User.objects.filter(email='3brothers_daddy@naver.com').exists():
+            print("Creating new admin user...")  # 로깅 추가
+            user = User.objects.create_superuser(
+                email='3brothers_daddy@naver.com',
+                password='원하는비밀번호'
+            )
+            print(f"Admin user created: {user}")  # 로깅 추가
+            return JsonResponse({"message": "Admin user created successfully"})
+
+        print("Admin user already exists")  # 로깅 추가
+        return JsonResponse({"message": "Admin user already exists"})
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")  # 에러 로깅 추가
+        return JsonResponse({
+            "error": str(e),
+            "type": type(e).__name__
+        }, status=500)
