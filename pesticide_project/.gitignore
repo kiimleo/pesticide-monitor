@@ -20,8 +20,10 @@ coverage.xml
 *.log
 .pytest_cache/
 .python-version
-config/api/tests.py
 filtered_directory_structure.txt
+pesticide_project/pesticide_limits.json
+pesticide_project/api/tree_make.py
+pesticide_project/api/tests.py
 
 # Django
 *.log

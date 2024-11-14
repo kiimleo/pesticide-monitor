@@ -1,6 +1,162 @@
 [
   {
     "model": "api.pesticidelimit",
+    "pk": 884,
+    "fields": {
+      "pesticide_name_kr": "디티아논",
+      "pesticide_name_en": "Dithianon",
+      "food_name": "매실",
+      "max_residue_limit": "5.000",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 1207,
+    "fields": {
+      "pesticide_name_kr": "루페뉴론",
+      "pesticide_name_en": "Lufenuron",
+      "food_name": "감",
+      "max_residue_limit": "0.500",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 1515,
+    "fields": {
+      "pesticide_name_kr": "말라티온",
+      "pesticide_name_en": "Malathion",
+      "food_name": "고추",
+      "max_residue_limit": "0.100",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 2699,
+    "fields": {
+      "pesticide_name_kr": "뷰프로페진",
+      "pesticide_name_en": "Buprofezin",
+      "food_name": "블루베리",
+      "max_residue_limit": "0.500",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 4239,
+    "fields": {
+      "pesticide_name_kr": "스피네토람",
+      "pesticide_name_en": "Spinetoram",
+      "food_name": "석류",
+      "max_residue_limit": "0.070",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 5435,
+    "fields": {
+      "pesticide_name_kr": "알디카브",
+      "pesticide_name_en": "Aldicarb",
+      "food_name": "유",
+      "max_residue_limit": "0.010",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 6635,
+    "fields": {
+      "pesticide_name_kr": "인독사카브",
+      "pesticide_name_en": "Indoxacarb",
+      "food_name": "모과",
+      "max_residue_limit": "0.200",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 7282,
+    "fields": {
+      "pesticide_name_kr": "클레토딤",
+      "pesticide_name_en": "Clethodim",
+      "food_name": "도라지",
+      "max_residue_limit": "0.050",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 9594,
+    "fields": {
+      "pesticide_name_kr": "펜티온",
+      "pesticide_name_en": "Fenthion : MPP",
+      "food_name": "소고기",
+      "max_residue_limit": "0.100",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 10032,
+    "fields": {
+      "pesticide_name_kr": "프로클로라즈",
+      "pesticide_name_en": "Prochloraz",
+      "food_name": "딸기",
+      "max_residue_limit": "2.000",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 11371,
+    "fields": {
+      "pesticide_name_kr": "피녹사덴",
+      "pesticide_name_en": "Pinoxaden",
+      "food_name": "밀",
+      "max_residue_limit": "0.700",
+      "condition_code": "†",
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 11637,
+    "fields": {
+      "pesticide_name_kr": "피리달릴",
+      "pesticide_name_en": "Pyridalyl",
+      "food_name": "동부",
+      "max_residue_limit": "0.200",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
+    "pk": 12337,
+    "fields": {
+      "pesticide_name_kr": "하이멕사졸",
+      "pesticide_name_en": "Hymexazol",
+      "food_name": "파",
+      "max_residue_limit": "0.050",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
     "pk": 4,
     "fields": {
       "pesticide_name_kr": "가스가마이신",
@@ -10561,18 +10717,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 884,
-    "fields": {
-      "pesticide_name_kr": "디티아논",
-      "pesticide_name_en": "Dithianon",
-      "food_name": "매실",
-      "max_residue_limit": "5.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 885,
     "fields": {
       "pesticide_name_kr": "디티아논",
@@ -14437,18 +14581,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 1207,
-    "fields": {
-      "pesticide_name_kr": "루페뉴론",
-      "pesticide_name_en": "Lufenuron",
-      "food_name": "감",
-      "max_residue_limit": "0.500",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 1208,
     "fields": {
       "pesticide_name_kr": "루페뉴론",
@@ -18127,18 +18259,6 @@
       "pesticide_name_en": "Mandipropamid",
       "food_name": "홍화씨",
       "max_residue_limit": "3.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 1515,
-    "fields": {
-      "pesticide_name_kr": "말라티온",
-      "pesticide_name_en": "Malathion",
-      "food_name": "고추",
-      "max_residue_limit": "0.100",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }
@@ -32347,18 +32467,6 @@
       "pesticide_name_en": "Buprofezin",
       "food_name": "복숭아",
       "max_residue_limit": "1.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 2699,
-    "fields": {
-      "pesticide_name_kr": "뷰프로페진",
-      "pesticide_name_en": "Buprofezin",
-      "food_name": "블루베리",
-      "max_residue_limit": "0.500",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }
@@ -50821,18 +50929,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 4239,
-    "fields": {
-      "pesticide_name_kr": "스피네토람",
-      "pesticide_name_en": "Spinetoram",
-      "food_name": "석류",
-      "max_residue_limit": "0.070",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 4240,
     "fields": {
       "pesticide_name_kr": "스피네토람",
@@ -65161,18 +65257,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 5435,
-    "fields": {
-      "pesticide_name_kr": "알디카브",
-      "pesticide_name_en": "Aldicarb",
-      "food_name": "유",
-      "max_residue_limit": "0.010",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 5436,
     "fields": {
       "pesticide_name_kr": "알디카브",
@@ -66733,6 +66817,18 @@
   },
   {
     "model": "api.pesticidelimit",
+    "pk": 5648,
+    "fields": {
+      "pesticide_name_kr": "에타복삼",
+      "pesticide_name_en": "Ethaboxam",
+      "food_name": "토마토",
+      "max_residue_limit": "1.000",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
     "pk": 5566,
     "fields": {
       "pesticide_name_kr": "에마멕틴 벤조에이트",
@@ -67711,18 +67807,6 @@
       "pesticide_name_en": "Ethaboxam",
       "food_name": "키위",
       "max_residue_limit": "5.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 5648,
-    "fields": {
-      "pesticide_name_kr": "에타복삼",
-      "pesticide_name_en": "Ethaboxam",
-      "food_name": "토마토",
-      "max_residue_limit": "1.000",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }
@@ -79561,18 +79645,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 6635,
-    "fields": {
-      "pesticide_name_kr": "인독사카브",
-      "pesticide_name_en": "Indoxacarb",
-      "food_name": "모과",
-      "max_residue_limit": "0.200",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 6636,
     "fields": {
       "pesticide_name_kr": "인독사카브",
@@ -87325,18 +87397,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 7282,
-    "fields": {
-      "pesticide_name_kr": "클레토딤",
-      "pesticide_name_en": "Clethodim",
-      "food_name": "도라지",
-      "max_residue_limit": "0.050",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 7283,
     "fields": {
       "pesticide_name_kr": "클레토딤",
@@ -88741,6 +88801,18 @@
   },
   {
     "model": "api.pesticidelimit",
+    "pk": 7481,
+    "fields": {
+      "pesticide_name_kr": "클로로탈로닐",
+      "pesticide_name_en": "Chlorothalonil",
+      "food_name": "피망",
+      "max_residue_limit": "7.000",
+      "condition_code": null,
+      "created_at": "2024-10-28T14:40:09.001617+00:00"
+    }
+  },
+  {
+    "model": "api.pesticidelimit",
     "pk": 7400,
     "fields": {
       "pesticide_name_kr": "클로란트라닐리프롤",
@@ -89706,18 +89778,6 @@
       "pesticide_name_kr": "클로로탈로닐",
       "pesticide_name_en": "Chlorothalonil",
       "food_name": "풋콩",
-      "max_residue_limit": "7.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 7481,
-    "fields": {
-      "pesticide_name_kr": "클로로탈로닐",
-      "pesticide_name_en": "Chlorothalonil",
-      "food_name": "피망",
       "max_residue_limit": "7.000",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
@@ -115069,18 +115129,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 9594,
-    "fields": {
-      "pesticide_name_kr": "펜티온",
-      "pesticide_name_en": "Fenthion : MPP",
-      "food_name": "소고기",
-      "max_residue_limit": "0.100",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 9595,
     "fields": {
       "pesticide_name_kr": "펜티온",
@@ -120319,18 +120367,6 @@
       "pesticide_name_en": "Prochloraz",
       "food_name": "들깻잎",
       "max_residue_limit": "50.000",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 10032,
-    "fields": {
-      "pesticide_name_kr": "프로클로라즈",
-      "pesticide_name_en": "Prochloraz",
-      "food_name": "딸기",
-      "max_residue_limit": "2.000",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }
@@ -136405,18 +136441,6 @@
   },
   {
     "model": "api.pesticidelimit",
-    "pk": 11371,
-    "fields": {
-      "pesticide_name_kr": "피녹사덴",
-      "pesticide_name_en": "Pinoxaden",
-      "food_name": "밀",
-      "max_residue_limit": "0.700",
-      "condition_code": "†",
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
     "pk": 11372,
     "fields": {
       "pesticide_name_kr": "피녹사덴",
@@ -139591,18 +139615,6 @@
       "pesticide_name_en": "Pyridalyl",
       "food_name": "대두",
       "max_residue_limit": "0.050",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 11637,
-    "fields": {
-      "pesticide_name_kr": "피리달릴",
-      "pesticide_name_en": "Pyridalyl",
-      "food_name": "동부",
-      "max_residue_limit": "0.200",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }
@@ -147991,18 +148003,6 @@
       "pesticide_name_en": "Hymexazol",
       "food_name": "콜라비",
       "max_residue_limit": "1.500",
-      "condition_code": null,
-      "created_at": "2024-10-28T14:40:09.001617+00:00"
-    }
-  },
-  {
-    "model": "api.pesticidelimit",
-    "pk": 12337,
-    "fields": {
-      "pesticide_name_kr": "하이멕사졸",
-      "pesticide_name_en": "Hymexazol",
-      "food_name": "파",
-      "max_residue_limit": "0.050",
       "condition_code": null,
       "created_at": "2024-10-28T14:40:09.001617+00:00"
     }

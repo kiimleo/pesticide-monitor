@@ -1,3 +1,7 @@
+# 로컬 DB에 저장된 DB를 Django 라이브 DB로 옮기기 위한 코드
+# Windows에서의 인코딩 문제를 해결하기 위해 다른 접근 방법을 시도해보겠습니다.
+# Python 스크립트를 만들어서 데이터를 직접 추출하고 저장
+
 import os
 import django
 import json
