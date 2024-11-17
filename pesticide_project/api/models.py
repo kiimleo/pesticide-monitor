@@ -44,6 +44,20 @@ class PesticideLimit(models.Model):
     def __str__(self):
         return f"{self.pesticide_name_kr} - {self.food_name} ({self.max_residue_limit})"
 
+# 식품명 대뷴류 소분류를 위한 모델추가
+class FoodCategory(models.Model):
+    main_category = models.CharField(max_length=100)
+    sub_category = models.CharField(max_length=100, null=True, blank=True)
+    food_name = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'food_categories'
+        indexes = [
+            models.Index(fields=['food_name']),
+            models.Index(fields=['main_category']),
+            models.Index(fields=['sub_category']),
+        ]
+
 
 class SearchLog(models.Model):
     search_term = models.CharField(max_length=200)  # 통합 검색어
