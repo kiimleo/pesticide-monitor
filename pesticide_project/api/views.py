@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Q, Count, Case, When
+from django.db.models.functions import Collate
 from django.utils import timezone
 from datetime import timedelta
 from .serializers import UserSerializer
@@ -57,6 +58,16 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     def list(self, request):
         pesticide = request.query_params.get('pesticide', '').strip().replace(' ', '')  # 모든 공백 제거
         food = request.query_params.get('food', '').strip()  # 앞뒤 공백만 제거
+        get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
+
+        if get_all_foods and pesticide:
+            # 해당 농약의 모든 식품 데이터 반환
+            queryset = self.queryset.filter(
+                Q(pesticide_name_kr__icontains=pesticide) |
+                Q(pesticide_name_en__icontains=pesticide)
+            ).order_by('food_name')  # 식품명 기준으로 정렬
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
 
         if not pesticide or not food:
             queryset = self.queryset

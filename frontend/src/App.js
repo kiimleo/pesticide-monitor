@@ -11,16 +11,19 @@ function MainContent() {
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchedFood, setSearchedFood] = useState('');  // 검색된 식품명 상태 추가
 
   const resetResults = () => {
     setPesticides([]);
     setError(null);
+    setSearchedFood('');
   };
 
   const handleFilter = async (filters) => {
     try {
       setLoading(true);
       setError(null);
+      setSearchedFood(filters.food);
       
       // 공백 제거 처리
       const params = {
@@ -132,7 +135,10 @@ function MainContent() {
           <CircularProgress />
         </Box>
       ) : (
-        <PesticideTable pesticides={pesticides} />
+        <PesticideTable 
+          pesticides={pesticides}
+          searchedFood={searchedFood}
+          />
       )}
     </Container>
   );

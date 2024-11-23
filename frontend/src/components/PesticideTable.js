@@ -15,10 +15,18 @@ import {
   IconButton,
   Dialog,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Button,
+  CircularProgress
 } from '@mui/material';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Fullscreen as FullscreenIcon, ThreeDRotation } from '@mui/icons-material';
+import { 
+  Fullscreen as FullscreenIcon, 
+  ThreeDRotation, 
+  ListAlt, 
+  ArrowBack,
+  InfoOutlined 
+} from '@mui/icons-material';
 import { api } from '../services/api';
 
 // 환경변수 설정
@@ -34,16 +42,20 @@ const formatResidueLimit = (value) => {
 };
 
 // PesticideTable 컴포넌트
-const PesticideTable = ({ pesticides }) => {
+const PesticideTable = ({ pesticides, searchedFood }) => {
   const [structureUrl, setStructureUrl] = useState(null);
   const [structure3D, setStructure3D] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [viewMode, setViewMode] = useState('2d');
   const viewerRef = useRef(null);
   const containerRef = useRef(null);
-  // 전체화면용 ref 추가
   const fullscreenContainerRef = useRef(null);
   const fullscreenViewerRef = useRef(null);
+
+  // 새로 추가할 상태들
+  const [showAllFoods, setShowAllFoods] = useState(false);
+  const [allPesticideData, setAllPesticideData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // 전체화면 전환 핸들러 수정
   const handleFullScreen = () => {
@@ -69,6 +81,29 @@ const PesticideTable = ({ pesticides }) => {
       }, 100);
     }
   };
+
+  // 새로 추가할 핸들러
+  const handleShowAllFoods = async () => {
+  try {
+    setLoading(true);
+    const pesticide = pesticides[0].pesticide_name_kr;
+    const response = await api.getPesticides({
+      pesticide: pesticide,
+      getAllFoods: true
+    });
+    // 한글 가나다순 정렬
+    const sortedData = [...response].sort((a, b) => 
+      a.food_name.localeCompare(b.food_name, 'ko-KR')
+    );
+    setAllPesticideData(sortedData);
+    setShowAllFoods(true);
+  } catch (error) {
+    console.error('Error fetching all foods:', error);
+  } finally {
+    setLoading(false);
+  }
+}; 
+
 
   useEffect(() => {
     const fetchStructures = async () => {
@@ -275,121 +310,197 @@ const PesticideTable = ({ pesticides }) => {
         </Grid>
   
         <Grid item xs={12} md={8}>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>식품명</TableCell>
-                  <TableCell>잔류허용기준(mg/kg)</TableCell>
-                  <TableCell>비고</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pesticides.map((pesticide, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{pesticide.food_name}</TableCell>
-                    <TableCell sx={{ color: 'error.main', fontWeight: 'medium' }}>
-                      {formatResidueLimit(pesticide.max_residue_limit)}
-                    </TableCell>
-                    <TableCell>{pesticide.condition_code_description}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {!showAllFoods ? (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6">검색 결과</Typography>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  onClick={handleShowAllFoods}
+                  startIcon={<ListAlt />}
+                >
+                  모든 식품명 보기
+                </Button>
+              </Box>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>식품명</TableCell>
+                      <TableCell>잔류허용기준(mg/kg)</TableCell>
+                      <TableCell>비고</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pesticides.map((pesticide, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{pesticide.food_name}</TableCell>
+                        <TableCell sx={{ color: 'error.main', fontWeight: 'medium' }}>
+                          {formatResidueLimit(pesticide.max_residue_limit)}
+                        </TableCell>
+                        <TableCell>{pesticide.condition_code_description}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {/* 카테고리 매칭 경우의 안내 메시지 */}
+              {pesticides[0].food_name !== searchedFood && (  // food를 searchedFood로 변경
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: '#f5f5f5', 
+                  borderRadius: 1,
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <Typography variant="body2" color="text.secondary">
+                    <InfoOutlined sx={{ fontSize: 'small', verticalAlign: 'middle', mr: 1 }} />
+                    '{pesticides[0].pesticide_name_kr}' 성분의 '{searchedFood}' 잔류허용기준이 별도로 설정되어 있지 않아, 
+                    상위 분류인 '{pesticides[0].food_name}'의 기준을 적용하고 있습니다.
+                  </Typography>
+                </Box>
+              )}
+            </>
+          ) : (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6">
+                  {pesticides[0].pesticide_name_kr}의 모든 허용기준
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  onClick={() => setShowAllFoods(false)}
+                  startIcon={<ArrowBack />}
+                >
+                  검색 결과로 돌아가기
+                </Button>
+              </Box>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>식품명</TableCell>
+                        <TableCell>잔류허용기준(mg/kg)</TableCell>
+                        <TableCell>비고</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {allPesticideData.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.food_name}</TableCell>
+                          <TableCell sx={{ color: 'error.main', fontWeight: 'medium' }}>
+                            {formatResidueLimit(item.max_residue_limit)}
+                          </TableCell>
+                          <TableCell>{item.condition_code_description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </>
+          )}
         </Grid>
-      </Grid> 
 
-      <Dialog
-        fullScreen
-        open={isFullScreen}
-        onClose={() => setIsFullScreen(false)}
-        sx={{ 
-          '& .MuiDialog-paper': { 
-            bgcolor: 'white',
-            padding: 0,
-            margin: 0
-          }
-        }}
-      >
-        <Box
-          sx={{
-            width: '100vw',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative',
-            backgroundColor: 'white'
+        <Dialog
+          fullScreen
+          open={isFullScreen}
+          onClose={() => setIsFullScreen(false)}
+          sx={{ 
+            '& .MuiDialog-paper': { 
+              bgcolor: 'white',
+              padding: 0,
+              margin: 0
+            }
           }}
         >
-          <Box sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewModeChange}
-              size="small"
-              sx={{ mr: 1, bgcolor: 'white' }}
-            >
-              <ToggleButton value="2d">2D</ToggleButton>
-              <ToggleButton value="3d">
-                <ThreeDRotation />
-              </ToggleButton>
-            </ToggleButtonGroup>
-          
-          <IconButton 
-            onClick={() => setIsFullScreen(false)}
-            sx={{ 
-              color: 'black',
-              bgcolor: 'white',
-              '&:hover': {
-                bgcolor: 'grey.100'
-              },
-              boxShadow: 1
+          <Box
+            sx={{
+              width: '100vw',
+              height: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              backgroundColor: 'white'
             }}
           >
-            <FullscreenIcon />
-          </IconButton>
-          </Box>
-          
-          {viewMode === '2d' && structureUrl && (
-              <TransformWrapper
-                initialScale={1}
-                minScale={0.5}
-                maxScale={4}
-                centerOnInit={true}
+            <Box sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={handleViewModeChange}
+                size="small"
+                sx={{ mr: 1, bgcolor: 'white' }}
               >
-                <TransformComponent
-                  wrapperStyle={{
-                    width: '100%',
-                    height: '100%'
-                  }}
+                <ToggleButton value="2d">2D</ToggleButton>
+                <ToggleButton value="3d">
+                  <ThreeDRotation />
+                </ToggleButton>
+              </ToggleButtonGroup>
+            
+            <IconButton 
+              onClick={() => setIsFullScreen(false)}
+              sx={{ 
+                color: 'black',
+                bgcolor: 'white',
+                '&:hover': {
+                  bgcolor: 'grey.100'
+                },
+                boxShadow: 1
+              }}
+            >
+              <FullscreenIcon />
+            </IconButton>
+            </Box>
+          ) : (
+            
+            {viewMode === '2d' && structureUrl && (
+                <TransformWrapper
+                  initialScale={1}
+                  minScale={0.5}
+                  maxScale={4}
+                  centerOnInit={true}
                 >
-                  <img
-                    src={structureUrl}
-                    alt="Chemical Structure"
-                    style={{ 
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                      margin: 'auto'
+                  <TransformComponent
+                    wrapperStyle={{
+                      width: '100%',
+                      height: '100%'
                     }}
-                  />
-                </TransformComponent>
-              </TransformWrapper>
-            )}
+                  >
+                    <img
+                      src={structureUrl}
+                      alt="Chemical Structure"
+                      style={{ 
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        margin: 'auto'
+                      }}
+                    />
+                  </TransformComponent>
+                </TransformWrapper>
+              )}
 
-            {viewMode === '3d' && (
-              <div
-                ref={fullscreenContainerRef}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  position: 'relative'
-                }}
-              />
-            )}
-        </Box>
-      </Dialog>
+              {viewMode === '3d' && (
+                <div
+                  ref={fullscreenContainerRef}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative'
+                  }}
+                />
+              )}
+          </Box>
+        </Dialog>
+      </Grid>
     </Box>
   );
 };

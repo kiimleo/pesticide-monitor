@@ -35,10 +35,10 @@ getPesticides: async (params) => {
     const response = await axios.get(`${API_BASE_URL}/pesticides/`, { 
       params: {
         pesticide: params.pesticide,
-        food: params.food
+        food: params.food,
+        getAllFoods: params.getAllFoods
       }
     });
-    console.log('Response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error in getPesticides:', error);
