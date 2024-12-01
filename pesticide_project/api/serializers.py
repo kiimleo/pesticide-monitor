@@ -8,14 +8,14 @@ class LimitConditionCodeSerializer(serializers.ModelSerializer):
 
 class PesticideLimitSerializer(serializers.ModelSerializer):
     condition_code_description = serializers.CharField(source='condition_code.description', read_only=True)
-    original_food_name = serializers.SerializerMethodField()
-    matching_type = serializers.CharField(required=False)  # 'direct', 'sub', 'main' 중 하나
+    matching_type = serializers.CharField(required=False)
+    original_food_name = serializers.CharField(required=False)
 
     class Meta:
         model = PesticideLimit
         fields = ['id', 'pesticide_name_kr', 'pesticide_name_en', 'food_name',
                  'max_residue_limit', 'condition_code', 'condition_code_description',
-                 'original_food_name', 'matching_type']
+                 'matching_type', 'original_food_name']
 
     def get_original_food_name(self, obj):
         return self.context.get('original_food_name', None)

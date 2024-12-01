@@ -356,21 +356,27 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                 </Table>
               </TableContainer>
               {/* 카테고리 매칭 안내 메시지 */}
-              {searchHistory.length > 0 && searchHistory.some(p => p.matching_type) && (
-                <Box sx={{ 
-                  mt: 2, 
-                  p: 2, 
-                  bgcolor: '#f5f5f5', 
-                  borderRadius: 1,
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Typography variant="body2" color="textSecondary">
-                    <InfoOutlined sx={{ fontSize: 'small', verticalAlign: 'middle', mr: 1 }} />
-                    '{searchedFood}' 잔류허용기준이 별도로 설정되어 있지 않아, 
-                    상위 분류인 '{searchHistory[0]?.food_name}'의 기준을 적용하고 있습니다.
-                  </Typography>
-                </Box>
-              )}
+              {searchHistory
+                .filter(p => p.matching_type === 'sub' || p.matching_type === 'main')
+                .map((p, index) => (
+                  <Box 
+                    key={`${p.pesticide_name_en}-${index}`}
+                    sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      bgcolor: '#f5f5f5', 
+                      borderRadius: 1,
+                      border: '1px solid #e0e0e0'
+                    }}
+                  >
+                    <Typography variant="body2" color="textSecondary">
+                      <InfoOutlined sx={{ fontSize: 'small', verticalAlign: 'middle', mr: 1 }} />
+                      [{p.pesticide_name_en}] 성분에 대한 '{p.original_food_name}'의 잔류허용기준이 별도로 설정되어 있지 않아, 
+                      상위 분류인 '{p.food_name}'의 기준을 적용하고 있습니다.
+                    </Typography>
+                  </Box>
+                ))
+              }
             </CardContent>
           </Card>
         </Grid>

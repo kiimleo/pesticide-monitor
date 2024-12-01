@@ -122,9 +122,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             if category.sub_category:
                 sub_matches = queryset.filter(food_name__iexact=category.sub_category)
                 if sub_matches.exists():
-                    for match in sub_matches:  # <- 여기에 추가
+                    for match in sub_matches:
                         match.matching_type = 'sub'
-                        match.original_food = food
+                        match.original_food_name = food  # original_food -> original_food_name으로 수정
                     serializer = self.get_serializer(sub_matches, many=True)
                     return Response(serializer.data)
 
@@ -133,7 +133,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                 if main_matches.exists():
                     for match in main_matches:  # <- 여기에 추가
                         match.matching_type = 'main'
-                        match.original_food = food
+                        match.original_food_name = food
                     serializer = self.get_serializer(main_matches, many=True)
                     return Response(serializer.data)
 
