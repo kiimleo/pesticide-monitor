@@ -56,34 +56,41 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['pesticide_name_kr', 'pesticide_name_en', 'food_name']
 
     def list(self, request):
-        pesticide = request.query_params.get('pesticide', '').strip().replace(' ', '')  # 모든 공백 제거
-        food = request.query_params.get('food', '').strip()  # 앞뒤 공백만 제거
+        pesticide = request.query_params.get('pesticide', '').strip().replace(' ', '')
+        food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
 
+        pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
+        queryset = self.queryset.filter(pesticide_query)
+
         if get_all_foods and pesticide:
-            # 해당 농약의 모든 식품 데이터 반환
-            queryset = self.queryset.filter(
-                Q(pesticide_name_kr__icontains=pesticide) |
-                Q(pesticide_name_en__icontains=pesticide)
-            ).order_by('food_name')  # 식품명 기준으로 정렬
+            queryset = queryset.order_by('food_name')
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
 
         if not pesticide or not food:
-            queryset = self.queryset
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return Response([])
 
-        # 1. 농약 존재 여부 확인
-        pesticide_exists = PesticideLimit.objects.filter(
-            Q(pesticide_name_kr__icontains=pesticide) |
-            Q(pesticide_name_en__icontains=pesticide)
+        pesticide_exists = queryset.exists()
+
+        # 입력된 식품명이 상위분류인지 확인
+        is_category = FoodCategory.objects.filter(
+            Q(main_category__iexact=food) | Q(sub_category__iexact=food)
         ).exists()
 
-        # 2. 식품 존재 여부 확인
+        if is_category:
+            # 상위분류명으로 직접 검색
+            category_matches = queryset.filter(food_name__iexact=food)
+            if category_matches.exists():
+                for match in category_matches:
+                    match.matching_type = 'direct'
+                    match.original_food = food
+                serializer = self.get_serializer(category_matches, many=True)
+                return Response(serializer.data)
+
+        # 일반 식품명으로 처리
         food_exists = FoodCategory.objects.filter(food_name__iexact=food).exists()
 
-        # 3. 둘 중 하나라도 존재하지 않으면 입력 오류로 판단
         if not pesticide_exists or not food_exists:
             return Response({
                 "error": "no_match",
@@ -97,53 +104,50 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                 }
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # 4. 이후 기존 검색 로직 수행
-        pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
-        queryset = self.queryset.filter(pesticide_query)
-
-        # 직접 매칭 및 부분 매칭 결과 모두 가져오기
-        base_food_name = food.split('(')[0] if '(' in food else food  # '무(뿌리)' -> '무'
-        matches = queryset.filter(
-            Q(food_name__iexact=food) |  # 정확한 매칭
-            Q(food_name__icontains=base_food_name)  # 부분 매칭
-        ).order_by(
+        # base_food_name = food.split('(')[0] if '(' in food else food
+        direct_matches = queryset.filter(food_name__iexact=food).order_by(
             Case(
-                When(food_name__iexact=food, then=0),  # 정확한 매칭을 먼저
+                When(food_name__iexact=food, then=0),
                 default=1
             ),
-            'food_name'  # 그 다음 식품명 알파벳 순
+            'food_name'
         )
 
-        if matches.exists():
-            serializer = self.get_serializer(matches, many=True)
+        if direct_matches.exists():
+            serializer = self.get_serializer(direct_matches, many=True)
             return Response(serializer.data)
 
-        # 카테고리 매칭
         try:
             category = FoodCategory.objects.get(food_name__iexact=food)
-
-            # 소분류 매칭
             if category.sub_category:
                 sub_matches = queryset.filter(food_name__iexact=category.sub_category)
                 if sub_matches.exists():
+                    for match in sub_matches:  # <- 여기에 추가
+                        match.matching_type = 'sub'
+                        match.original_food = food
                     serializer = self.get_serializer(sub_matches, many=True)
                     return Response(serializer.data)
 
-            # 대분류 매칭
-            main_matches = queryset.filter(food_name__iexact=category.main_category)
-            if main_matches.exists():
-                serializer = self.get_serializer(main_matches, many=True)
-                return Response(serializer.data)
+            if category.main_category:
+                main_matches = queryset.filter(food_name__iexact=category.main_category)
+                if main_matches.exists():
+                    for match in main_matches:  # <- 여기에 추가
+                        match.matching_type = 'main'
+                        match.original_food = food
+                    serializer = self.get_serializer(main_matches, many=True)
+                    return Response(serializer.data)
 
         except FoodCategory.DoesNotExist:
             pass
 
-        # 매칭되는 데이터가 없는 경우 (허가되지 않은 경우)
+        pesticide_info = queryset.first()
         return Response({
             "error": "no_match",
             "error_type": "not_permitted",
             "message": f"'{pesticide}'은(는) '{food}'에 사용이 허가되지 않은 농약성분입니다.",
             "searched_pesticide": pesticide,
+            "pesticide_name_kr": pesticide_info.pesticide_name_kr if pesticide_info else pesticide,
+            "pesticide_name_en": pesticide_info.pesticide_name_en if pesticide_info else pesticide,
             "searched_food": food
         }, status=status.HTTP_404_NOT_FOUND)
 

@@ -17,156 +17,80 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Button,
-  CircularProgress
+  TextField,
+  Stack
 } from '@mui/material';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { 
   Fullscreen as FullscreenIcon, 
   ThreeDRotation, 
-  ListAlt, 
-  ArrowBack,
+  Add as AddIcon,
+  Download as DownloadIcon,
   InfoOutlined 
 } from '@mui/icons-material';
 import { api } from '../services/api';
+import * as XLSX from 'xlsx';
 
-// 환경변수 설정
-const API_URL = process.env.REACT_APP_API_URL || '';
-
-// formatResidueLimit 함수 정의
+// 기존의 formatResidueLimit 함수 유지
 const formatResidueLimit = (value) => {
   const truncated = Math.floor(value * 100) / 100;
-  if (truncated.toFixed(2).endsWith('0')) {
-    return truncated.toFixed(1);
-  }
-  return truncated.toFixed(2);
+  return truncated.toFixed(2).endsWith('0') ? truncated.toFixed(1) : truncated.toFixed(2);
 };
 
-// PesticideTable 컴포넌트
-const PesticideTable = ({ pesticides, searchedFood }) => {
+const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
+  // 기존 상태 유지
   const [structureUrl, setStructureUrl] = useState(null);
   const [structure3D, setStructure3D] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [viewMode, setViewMode] = useState('2d');
+  const [searchHistory, setSearchHistory] = useState([]);
   const viewerRef = useRef(null);
   const containerRef = useRef(null);
   const fullscreenContainerRef = useRef(null);
   const fullscreenViewerRef = useRef(null);
-
-  // 새로 추가할 상태들
-  const [showAllFoods, setShowAllFoods] = useState(false);
-  const [allPesticideData, setAllPesticideData] = useState([]);
+  
+  // 새로운 상태 추가
+  const [selectedPesticide, setSelectedPesticide] = useState(null);
+  const [newPesticideName, setNewPesticideName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 전체화면 전환 핸들러 수정
-  const handleFullScreen = () => {
-    setIsFullScreen(true);
-    // 다음 렌더링 사이클에서 3D 뷰어 초기화를 위해 약간의 지연 추가
-    if (viewMode === '3d') {
-      setTimeout(() => {
-        if (fullscreenContainerRef.current) {
-          const viewer = window.$3Dmol.createViewer(fullscreenContainerRef.current, {
-            defaultcolors: window.$3Dmol.rasmolElementColors
-          });
-          
-          viewer.addModel(structure3D, "sdf");
-          viewer.setStyle({}, {
-            stick: {radius: 0.2},
-            sphere: {radius: 0.4}
-          });
-          viewer.zoomTo();
-          viewer.render();
-          
-          fullscreenViewerRef.current = viewer;
-        }
-      }, 100);
+  // 초기 데이터 설정
+  useEffect(() => {
+    if (initialPesticides.length > 0) {
+      setSearchHistory(initialPesticides.map(p => ({
+        ...p,
+        timestamp: new Date().getTime()
+      })));
+      setSelectedPesticide(initialPesticides[0]);
     }
-  };
+  }, [initialPesticides]);
 
-  // 새로 추가할 핸들러
-  const handleShowAllFoods = async () => {
-  try {
-    setLoading(true);
-    const pesticide = pesticides[0].pesticide_name_kr;
-    const response = await api.getPesticides({
-      pesticide: pesticide,
-      getAllFoods: true
-    });
-    // 한글 가나다순 정렬
-    const sortedData = [...response].sort((a, b) => 
-      a.food_name.localeCompare(b.food_name, 'ko-KR')
-    );
-    setAllPesticideData(sortedData);
-    setShowAllFoods(true);
-  } catch (error) {
-    console.error('Error fetching all foods:', error);
-  } finally {
-    setLoading(false);
-  }
-}; 
-
-
+  // 구조 데이터 가져오기
   useEffect(() => {
     const fetchStructures = async () => {
-      if (pesticides.length > 0) {
-        // 2D 구조 가져오기
-        const url = await api.getChemicalStructure(pesticides[0].pesticide_name_en);
+      if (selectedPesticide) {
+        const url = await api.getChemicalStructure(selectedPesticide.pesticide_name_en);
         setStructureUrl(url);
-        
-        // 3D 구조 가져오기
-        const structure3D = await api.get3DStructure(pesticides[0].pesticide_name_en);
+        const structure3D = await api.get3DStructure(selectedPesticide.pesticide_name_en);
         setStructure3D(structure3D);
       }
     };
-    
     fetchStructures();
-  }, [pesticides]);
+  }, [selectedPesticide]);
 
-  // 새로 추가하는 검색 로그용 useEffect
-  useEffect(() => {
-    const logSearchResults = async () => {
-      if (pesticides.length > 0) {
-        try {
-          // 검색어 정보 추출
-          const pesticide = pesticides[0].pesticide_name_kr;
-          const food = pesticides[0].food_name;
-          
-          // 검색 결과 로그 전송
-          await fetch(`${API_URL}/api/pesticide-limits/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              pesticide_term: pesticide,
-              food_term: food,
-              results_count: pesticides.length
-            })
-          });
-        } catch (error) {
-          console.error('Error logging search results:', error);
-        }
-      }
-    };
-
-    logSearchResults();
-  }, [pesticides]);
-
-
-  // 일반 화면용 3D 뷰어 초기화
+  // 3D 뷰어 초기화 (기존 코드 유지)
   useEffect(() => {
     if (viewMode === '3d' && structure3D && containerRef.current && !isFullScreen) {
       const viewer = window.$3Dmol.createViewer(containerRef.current, {
         defaultcolors: window.$3Dmol.rasmolElementColors
       });
-      
       viewer.addModel(structure3D, "sdf");
       viewer.setStyle({}, {
-        stick: {radius: 0.2}, // stick의 반지름 설정
-        sphere: {radius: 0.4} // ball(sphere)의 반지름 설정
+        stick: {radius: 0.2},
+        sphere: {radius: 0.4}
       });
       viewer.zoomTo();
       viewer.render();
-      
       viewerRef.current = viewer;
       
       return () => {
@@ -177,13 +101,12 @@ const PesticideTable = ({ pesticides, searchedFood }) => {
     }
   }, [viewMode, structure3D, isFullScreen]);
 
-  // 전체화면용 3D 뷰어 초기화
+  // 전체화면 3D 뷰어 초기화 (기존 코드 유지)
   useEffect(() => {
     if (viewMode === '3d' && structure3D && fullscreenContainerRef.current && isFullScreen) {
       const viewer = window.$3Dmol.createViewer(fullscreenContainerRef.current, {
         defaultcolors: window.$3Dmol.rasmolElementColors
       });
-      
       viewer.addModel(structure3D, "sdf");
       viewer.setStyle({}, {
         stick: {radius: 0.2},
@@ -191,7 +114,6 @@ const PesticideTable = ({ pesticides, searchedFood }) => {
       });
       viewer.zoomTo();
       viewer.render();
-      
       fullscreenViewerRef.current = viewer;
       
       return () => {
@@ -203,150 +125,238 @@ const PesticideTable = ({ pesticides, searchedFood }) => {
   }, [viewMode, structure3D, isFullScreen]);
 
 
-  const handleViewModeChange = (event, newMode) => {
-    if (newMode !== null) {
-      setViewMode(newMode);
+  // 새로운 농약성분 추가
+  const handleAddPesticide = async () => {
+    if (!newPesticideName.trim()) return;
+    setLoading(true);
+    try {
+      const response = await api.getPesticides({
+        pesticide: newPesticideName,
+        food: searchedFood
+      });
+      
+      const timestamp = new Date().getTime();
+      if (Array.isArray(response)) {
+        const newPesticides = response.map(p => ({
+          ...p,
+          timestamp
+        }));
+        setSearchHistory(prev => [...prev, ...newPesticides]);
+      }
+      setNewPesticideName('');
+    } catch (error) {
+      if (error.response?.data?.error_type === 'not_permitted') {
+        const newNotPermitted = {
+          pesticide_name_kr: error.response.data.pesticide_name_kr,
+          pesticide_name_en: error.response.data.pesticide_name_en,
+          max_residue_limit: null,
+          timestamp: new Date().getTime()
+        };
+        setSearchHistory(prev => [...prev, newNotPermitted]);
+        setNewPesticideName('');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!pesticides.length) {
-    return (
-      <Typography variant="body1" sx={{ mt: 2 }}>
-        검색 결과가 없습니다.
-      </Typography>
-    );
-  }
+  // handleReset 함수 추가 (state 관련 함수들 근처에)
+  const handleReset = () => {
+    setSearchHistory([]); // searchHistory 초기화
+    setNewPesticideName(''); // 입력 필드 초기화
+    setSelectedPesticide(null); // 선택된 농약 정보 초기화
+    setStructureUrl(null); // 구조 이미지 초기화
+    setStructure3D(null); // 3D 구조 초기화
+  };
+
+  // 엑셀 다운로드
+  const handleDownload = () => {
+    // searchHistory에서 데이터 가져오기
+    const xlsxData = [
+      ['식품명', '농약성분명', '영문명', '잔류허용기준(mg/kg)', '비고'],
+      ...searchHistory.map(p => [
+        searchedFood,
+        p.pesticide_name_kr,
+        p.pesticide_name_en,
+        p.max_residue_limit ? formatResidueLimit(p.max_residue_limit) : '허가되지 않은 농약성분',
+        p.condition_code_description || ''
+      ])
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(xlsxData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    
+    XLSX.writeFile(wb, `잔류농약기준_${searchedFood}_${new Date().toLocaleDateString()}.xlsx`);
+  };
 
   return (
     <Box sx={{ mt: 3 }}>
       <Grid container spacing={3}>
-        {/* 검색 결과 수 표시 - 최상단에 추가 */}
-        <Grid item xs={12}>
-          {pesticides.length > 0 && (
-            <Card sx={{ mt: 2 }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="textSecondary">
-                  검색 결과: 총 {pesticides.length}건
-                </Typography>
-              </CardContent>
-            </Card>
-          )}
-        </Grid>
-
+        {/* 좌측: 검색된 식품 정보 */}
         <Grid item xs={12} md={4}>
-          <Card sx={{ bgcolor: 'white' }}>
+          <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ color: 'black' }}>
-                  {pesticides[0].pesticide_name_kr}
-                  <Typography variant="subtitle1" sx={{ color: 'text.secondary'}}>
-                    {pesticides[0].pesticide_name_en}
-                  </Typography>
-                </Typography>
-                <Box>
-                  <ToggleButtonGroup
-                    value={viewMode}
-                    exclusive
-                    onChange={handleViewModeChange}
-                    size="small"
-                    sx={{ mr: 1 }}
-                  >
-                    <ToggleButton value="2d">2D</ToggleButton>
-                    <ToggleButton value="3d">
-                      <ThreeDRotation />
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                  <IconButton 
-                    onClick={handleFullScreen}
-                    sx={{ color: 'black' }}
-                  >
-                    <FullscreenIcon />
-                  </IconButton>
-                </Box>
-              </Box>
+              <Typography variant="h6" gutterBottom>
+                검색된 식품
+              </Typography>
+              <Typography variant="h5" color="primary">
+                {searchedFood}
+              </Typography>
               
-              {viewMode === '2d' && structureUrl && (
-                <TransformWrapper
-                  initialScale={1}
-                  minScale={0.5}
-                  maxScale={4}
-                  centerOnInit={true}
-                >
-                  <TransformComponent
-                    wrapperStyle={{
-                      width: '100%',
-                      height: '300px',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <img
-                      src={structureUrl}
-                      alt="Chemical Structure"
-                      style={{ 
-                        width: '90%',
-                        height: '90%',
-                        objectFit: 'contain',
-                        backgroundColor: 'transparent'
+              {/* 2D/3D 구조 표시 (기존 코드 유지) */}
+              {selectedPesticide && (
+                <Box sx={{ mt: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="subtitle1">
+                      {selectedPesticide.pesticide_name_kr}
+                      <Typography variant="body2" color="textSecondary">
+                        {selectedPesticide.pesticide_name_en}
+                      </Typography>
+                    </Typography>
+                    <Box>
+                      <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        onChange={(e, newMode) => newMode && setViewMode(newMode)}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      >
+                        <ToggleButton value="2d">2D</ToggleButton>
+                        <ToggleButton value="3d">
+                          <ThreeDRotation />
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                      <IconButton onClick={() => setIsFullScreen(true)}>
+                        <FullscreenIcon />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  
+                  {viewMode === '2d' && structureUrl ? (
+                    <TransformWrapper
+                      initialScale={1}
+                      minScale={0.5}
+                      maxScale={4}
+                      centerOnInit={true}
+                    >
+                      <TransformComponent
+                        wrapperStyle={{
+                          width: '100%',
+                          height: '300px',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <img
+                          src={structureUrl}
+                          alt="Chemical Structure"
+                          style={{ 
+                            width: '90%',
+                            height: '90%',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </TransformComponent>
+                    </TransformWrapper>
+                  ) : viewMode === '3d' ? (
+                    <div
+                      ref={containerRef}
+                      style={{
+                        width: '100%',
+                        height: '300px',
+                        position: 'relative'
                       }}
                     />
-                  </TransformComponent>
-                </TransformWrapper>
-              )}
-              
-              {viewMode === '3d' && (
-                <div
-                  ref={containerRef}
-                  style={{
-                    width: '100%',
-                    height: '300px',
-                    position: 'relative'
-                  }}
-                />
+                  ) : null}
+                </Box>
               )}
             </CardContent>
           </Card>
         </Grid>
-  
+
+        {/* 우측: 농약성분 추가 및 결과 테이블 */}
         <Grid item xs={12} md={8}>
-          {!showAllFoods ? (
-            <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">검색 결과</Typography>
-                <Button 
-                  variant="outlined" 
-                  color="primary"
-                  onClick={handleShowAllFoods}
-                  startIcon={<ListAlt />}
-                >
-                  모든 식품명 보기
-                </Button>
+          <Card>
+            <CardContent>
+              {/* 농약성분 추가 영역 */}
+              <Box sx={{ mb: 3 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs>
+                    <TextField
+                      fullWidth
+                      label="농약성분명 추가 검색"
+                      value={newPesticideName}
+                      onChange={(e) => setNewPesticideName(e.target.value)}
+                      placeholder="새로운 농약성분명을 입력하세요"
+                    />
+                  </Grid>
+                  <Grid item>
+                    <Stack spacing={1}>
+                      <Button
+                        variant="contained"
+                        onClick={handleAddPesticide}
+                        startIcon={<AddIcon />}
+                        disabled={!newPesticideName.trim() || loading}
+                      >
+                        검색
+                      </Button>
+                      {/* 초기화 버튼에 onClick 이벤트 추가 */}
+                      <Button
+                        variant="outlined"
+                        onClick={handleReset}
+                      >
+                        초기화
+                      </Button>
+                    </Stack>
+                  </Grid>
+                  <Grid item>
+                    <Button
+                      variant="outlined"
+                      onClick={handleDownload}
+                      startIcon={<DownloadIcon />}
+                    >
+                      엑셀 다운로드
+                    </Button>
+                  </Grid>
+                </Grid>
               </Box>
+
+              {/* 결과 테이블 */}
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>식품명</TableCell>
+                      <TableCell>농약성분명</TableCell>
+                      <TableCell>영문명</TableCell>
                       <TableCell>잔류허용기준(mg/kg)</TableCell>
                       <TableCell>비고</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {pesticides.map((pesticide, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{pesticide.food_name}</TableCell>
-                        <TableCell sx={{ color: 'error.main', fontWeight: 'medium' }}>
-                          {formatResidueLimit(pesticide.max_residue_limit)}
-                        </TableCell>
-                        <TableCell>{pesticide.condition_code_description}</TableCell>
-                      </TableRow>
-                    ))}
+                    {searchHistory
+                      .sort((a, b) => a.timestamp - b.timestamp)
+                      .map((pesticide, index) => (
+                        <TableRow key={`${pesticide.pesticide_name_kr}-${pesticide.timestamp}`}>
+                          <TableCell>{pesticide.pesticide_name_kr}</TableCell>
+                          <TableCell>{pesticide.pesticide_name_en}</TableCell>
+                          <TableCell sx={{ 
+                            color: pesticide.max_residue_limit ? 'inherit' : 'error.main',
+                            fontWeight: pesticide.max_residue_limit ? 'normal' : 'medium'
+                          }}>
+                            {pesticide.max_residue_limit 
+                              ? formatResidueLimit(pesticide.max_residue_limit)
+                              : '허가되지 않은 농약성분'}
+                          </TableCell>
+                          <TableCell>{pesticide.condition_code_description || ''}</TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-              {/* 카테고리 매칭 경우의 안내 메시지 */}
-              {pesticides[0].food_name !== searchedFood && (  // food를 searchedFood로 변경
+              {/* 카테고리 매칭 안내 메시지 */}
+              {searchHistory.length > 0 && searchHistory.some(p => p.matching_type) && (
                 <Box sx={{ 
                   mt: 2, 
                   p: 2, 
@@ -354,155 +364,102 @@ const PesticideTable = ({ pesticides, searchedFood }) => {
                   borderRadius: 1,
                   border: '1px solid #e0e0e0'
                 }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="textSecondary">
                     <InfoOutlined sx={{ fontSize: 'small', verticalAlign: 'middle', mr: 1 }} />
-                    '{pesticides[0].pesticide_name_kr}' 성분의 '{searchedFood}' 잔류허용기준이 별도로 설정되어 있지 않아, 
-                    상위 분류인 '{pesticides[0].food_name}'의 기준을 적용하고 있습니다.
+                    '{searchedFood}' 잔류허용기준이 별도로 설정되어 있지 않아, 
+                    상위 분류인 '{searchHistory[0]?.food_name}'의 기준을 적용하고 있습니다.
                   </Typography>
                 </Box>
               )}
-            </>
-          ) : (
-            <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">
-                  {pesticides[0].pesticide_name_kr}의 모든 허용기준
-                </Typography>
-                <Button 
-                  variant="outlined" 
-                  color="primary"
-                  onClick={() => setShowAllFoods(false)}
-                  startIcon={<ArrowBack />}
-                >
-                  검색 결과로 돌아가기
-                </Button>
-              </Box>
-              {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>식품명</TableCell>
-                        <TableCell>잔류허용기준(mg/kg)</TableCell>
-                        <TableCell>비고</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {allPesticideData.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.food_name}</TableCell>
-                          <TableCell sx={{ color: 'error.main', fontWeight: 'medium' }}>
-                            {formatResidueLimit(item.max_residue_limit)}
-                          </TableCell>
-                          <TableCell>{item.condition_code_description}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </>
-          )}
+            </CardContent>
+          </Card>
         </Grid>
+      </Grid>
 
-        <Dialog
-          fullScreen
-          open={isFullScreen}
-          onClose={() => setIsFullScreen(false)}
-          sx={{ 
-            '& .MuiDialog-paper': { 
-              bgcolor: 'white',
-              padding: 0,
-              margin: 0
-            }
-          }}
-        >
-          <Box
-            sx={{
-              width: '100vw',
-              height: '100vh',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              backgroundColor: 'white'
-            }}
-          >
-            <Box sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
-              <ToggleButtonGroup
-                value={viewMode}
-                exclusive
-                onChange={handleViewModeChange}
-                size="small"
-                sx={{ mr: 1, bgcolor: 'white' }}
-              >
-                <ToggleButton value="2d">2D</ToggleButton>
-                <ToggleButton value="3d">
-                  <ThreeDRotation />
-                </ToggleButton>
-              </ToggleButtonGroup>
-            
+      {/* 전체화면 모달 (기존 코드 유지) */}
+      <Dialog
+        fullScreen
+        open={isFullScreen}
+        onClose={() => setIsFullScreen(false)}
+        sx={{ 
+          '& .MuiDialog-paper': { 
+            bgcolor: 'white',
+            padding: 0,
+            margin: 0
+          }
+        }}
+      >
+        <Box sx={{
+          width: '100vw',
+          height: '100vh',
+          position: 'relative',
+          backgroundColor: 'white'
+        }}>
+          <Box sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setViewMode(newMode)}
+              size="small"
+              sx={{ mr: 1 }}
+            >
+              <ToggleButton value="2d">2D</ToggleButton>
+              <ToggleButton value="3d">
+                <ThreeDRotation />
+              </ToggleButton>
+            </ToggleButtonGroup>
             <IconButton 
               onClick={() => setIsFullScreen(false)}
               sx={{ 
                 color: 'black',
                 bgcolor: 'white',
-                '&:hover': {
-                  bgcolor: 'grey.100'
-                },
+                '&:hover': { bgcolor: 'grey.100' },
                 boxShadow: 1
               }}
             >
               <FullscreenIcon />
             </IconButton>
-            </Box>
-          ) : (
-            
-            {viewMode === '2d' && structureUrl && (
-                <TransformWrapper
-                  initialScale={1}
-                  minScale={0.5}
-                  maxScale={4}
-                  centerOnInit={true}
-                >
-                  <TransformComponent
-                    wrapperStyle={{
-                      width: '100%',
-                      height: '100%'
-                    }}
-                  >
-                    <img
-                      src={structureUrl}
-                      alt="Chemical Structure"
-                      style={{ 
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                        margin: 'auto'
-                      }}
-                    />
-                  </TransformComponent>
-                </TransformWrapper>
-              )}
+          </Box>
 
-              {viewMode === '3d' && (
-                <div
-                  ref={fullscreenContainerRef}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    position: 'relative'
+          {viewMode === '2d' && structureUrl ? (
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.5}
+              maxScale={4}
+              centerOnInit={true}
+            >
+              <TransformComponent
+                wrapperStyle={{
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
+                <img
+                  src={structureUrl}
+                  alt="Chemical Structure"
+                  style={{ 
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    margin: 'auto'
                   }}
                 />
-              )}
-          </Box>
-        </Dialog>
-      </Grid>
+              </TransformComponent>
+            </TransformWrapper>
+          ) : viewMode === '3d' ? (
+            <div
+              ref={fullscreenContainerRef}
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative'
+              }}
+            />
+          ) : null}
+        </Box>
+      </Dialog>
     </Box>
   );
-};
-
-export default PesticideTable;
+ };
+ 
+ export default PesticideTable;

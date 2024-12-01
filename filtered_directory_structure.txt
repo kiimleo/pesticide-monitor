@@ -23,8 +23,11 @@
     📄 admin.py (.py)
     📄 apps.py (.py)
     📄 filtered_directory_structure.txt (.txt)
+    📁 management
+      📁 commands
     📁 migrations
       📄 0001_initial.py (.py)
+      📄 0002_auto_20241116_0057.py (.py)
       📄 __init__.py (.py)
       📁 __pycache__
     📄 models.py (.py)
