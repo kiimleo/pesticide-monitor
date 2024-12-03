@@ -27,7 +27,7 @@ if settings.DEBUG:
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'conditions', LimitConditionCodeViewSet)
-router.register(r'pesticides', PesticideLimitViewSet)
+router.register(r'pesticides', PesticideLimitViewSet, basename='pesticide')
 
 # urlpatterns 초기화
 urlpatterns = [

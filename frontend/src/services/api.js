@@ -27,25 +27,30 @@ export const api = {
     return response.json();
   },
   
-// 농약 목록 조회
-getPesticides: async (params) => {
-  console.log('Making request to:', `${API_BASE_URL}/pesticides/`);
-  console.log('With params:', { pesticide: params.pesticide, food: params.food });
-  try {
-    const response = await axios.get(`${API_BASE_URL}/pesticides/`, { 
-      params: {
-        pesticide: params.pesticide,
-        food: params.food,
-        getAllFoods: params.getAllFoods
-      }
-    });
+  // 검색어 자동입력
+  getPesticideAutocomplete: async (query) => {
+    const response = await axios.get(`${API_BASE_URL}/pesticides/autocomplete/?query=${query}`);
     return response.data;
-  } catch (error) {
-    console.error('Error in getPesticides:', error);
-    throw error;
-  }
-},
+  },
 
+  // 농약 목록 조회
+  getPesticides: async (params) => {
+    console.log('Making request to:', `${API_BASE_URL}/pesticides/`);
+    console.log('With params:', { pesticide: params.pesticide, food: params.food });
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/`, { 
+        params: {
+          pesticide: params.pesticide,
+          food: params.food,
+          getAllFoods: params.getAllFoods
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error in getPesticides:', error);
+      throw error;
+    }
+  },
 
   // 조건 코드 목록 조회
   getConditions: async () => {
@@ -69,8 +74,7 @@ getPesticides: async (params) => {
       console.error('Search error:', error.response?.data || error);  // 에러 상세 정보 확인
       throw error;
     }
-},
-
+  },
 
   // PubChem API 함수
   getChemicalStructure: async (compoundName) => {

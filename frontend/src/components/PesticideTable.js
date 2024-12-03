@@ -17,10 +17,10 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Button,
-  TextField,
   Stack
 } from '@mui/material';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import PesticideAutocomplete from './PesticideAutocomplete';
 import { 
   Fullscreen as FullscreenIcon, 
   ThreeDRotation, 
@@ -284,12 +284,9 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
               <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2} alignItems="center">
                   <Grid item xs>
-                    <TextField
-                      fullWidth
-                      label="농약성분명 추가 검색"
+                    <PesticideAutocomplete
                       value={newPesticideName}
-                      onChange={(e) => setNewPesticideName(e.target.value)}
-                      placeholder="새로운 농약성분명을 입력하세요"
+                      onChange={(value) => setNewPesticideName(value)}
                     />
                   </Grid>
                   <Grid item>

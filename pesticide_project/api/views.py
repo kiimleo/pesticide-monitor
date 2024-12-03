@@ -201,6 +201,20 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(stats)
 
+    @action(detail=False, methods=['GET'])
+    def autocomplete(self, request):
+        query = request.query_params.get('query', '').strip()
+        if len(query) < 2:
+            return Response([])
+
+        results = PesticideLimit.objects.filter(
+            Q(pesticide_name_kr__icontains=query) |
+            Q(pesticide_name_en__icontains=query)
+        ).values('pesticide_name_kr', 'pesticide_name_en').distinct()[:10]
+
+        return Response(results)
+
+
 def index(request):
     """루트 경로에 접근할 때 표시되는 기본 인덱스 뷰"""
     return HttpResponse("Welcome to the pesticide monitoring application!")
