@@ -15,7 +15,7 @@ from .models import LimitConditionCode, PesticideLimit
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
 from django.http import HttpResponse
 from django.http import JsonResponse
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 import requests
 from django.conf import settings
 import os
@@ -133,6 +133,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         pesticide = request.query_params.get('pesticide')  # 한글 농약명
         food = request.query_params.get('food')  # 한글 작물명
 
+        print(f"1. 원본 입력값:")
+        print(f"pesticide: {pesticide}")
+        print(f"food: {food}")
+
         # 영문 농약명 조회
         english_name = PesticideLimit.objects.filter(
             pesticide_name_kr=pesticide
@@ -141,14 +145,22 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         # API 키 및 설정
         api_key = os.getenv('PESTICIDE_API_KEY')
         service_id = 'I1910'
-        base_url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/5'
+        base_url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/2'
 
         # URL 구성
         query_params = []
         if pesticide:
-            query_params.append(f'PRDLST_KOR_NM={quote(pesticide)}')  # 한글 농약명
+            encoded_pesticide = quote(pesticide)
+            query_params.append(f'PRDLST_KOR_NM={quote(pesticide)}')  # 한글 농약성분명
+            print(f"\n2. 인코딩된 농약명:")
+            print(f"Encoded: {encoded_pesticide}")
+            print(f"Decoded: {unquote(encoded_pesticide)}")
         if food:
+            encoded_food = quote(food)
             query_params.append(f'CROPS_NM={quote(food)}')  # 작물명
+            print(f"\n3. 인코딩된 작물명:")
+            print(f"Encoded: {encoded_food}")
+            print(f"Decoded: {unquote(encoded_food)}")
 
         # 최종 URL 생성
         url = f"{base_url}/{'&'.join(query_params)}"

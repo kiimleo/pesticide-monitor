@@ -76,6 +76,24 @@ export const api = {
     }
   },
 
+  // 농약 상세 정보 호출하기
+  getDetailInfo: async (pesticide, food) => {
+    try {
+      console.log('Fetching detail info:', { pesticide, food });
+      const response = await axios.get(`${API_BASE_URL}/pesticides/detail/`, {
+        params: {
+          pesticide: pesticide,
+          food: food
+        }
+      });
+      console.log('Detail info response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching detail info:', error);
+      throw error;
+    }
+  },
+
   // PubChem API 함수
   getChemicalStructure: async (compoundName) => {
     try {
