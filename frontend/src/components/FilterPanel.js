@@ -1,3 +1,5 @@
+// path of this code : C:\Users\leo\pesticide\frontend\src\components\FilterPanel.js
+
 import React, { useState } from 'react';
 import {
 Box,

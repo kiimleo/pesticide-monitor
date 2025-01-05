@@ -1,3 +1,5 @@
+// path of this code : C:\Users\leo\pesticide\frontend\src\components\PesticideTable.js
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
@@ -38,7 +40,7 @@ const formatResidueLimit = (value) => {
 };
 
 const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
-  // 기존 상태 유지
+  // 상태 정의
   const [structureUrl, setStructureUrl] = useState(null);
   const [structure3D, setStructure3D] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -53,6 +55,8 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
   const [selectedPesticide, setSelectedPesticide] = useState(null);
   const [newPesticideName, setNewPesticideName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [expandedRow, setExpandedRow] = useState(null);  // 확장된 행 ID 저장
+
 
   // 초기 데이터 설정
   useEffect(() => {
@@ -171,24 +175,82 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
 
   // 엑셀 다운로드
   const handleDownload = () => {
-    // searchHistory에서 데이터 가져오기
+    // 확장된 정보를 포함하는 데이터 구조로 수정
     const xlsxData = [
-      ['식품명', '농약성분명', '영문명', '잔류허용기준(mg/kg)', '비고'],
+      ['식품명', '농약성분명(한글)', '농약성분명(영문)', '잔류허용기준(mg/kg)','상표명', '용도', 
+       '작물명', '병해충/잡초명', '사용적기', '희석배수', '사용횟수', 
+       '법인명', '제조/수입구분', '등록유효일자', '등록일자', 
+       '등록여부', '생태독성', '비고'],
       ...searchHistory.map(p => [
         searchedFood,
         p.pesticide_name_kr,
         p.pesticide_name_en,
         p.max_residue_limit ? formatResidueLimit(p.max_residue_limit) : '허가되지 않은 농약성분',
+        p.BRND_NM || '',          // 상표명
+        p.PRPOS_DVS_CD_NM || '', // 용도
+        p.CROPS_NM || '',        // 작물명
+        p.SICKNS_HLSCT_NM_WEEDS_NM || '', // 병해충/잡초명 
+        p.USE_PPRTM || '',       // 사용적기
+        p.DILU_DRNG || '',       // 희석배수
+        p.USE_TMNO || '',        // 사용횟수
+        p.CPR_NM || '',          // 법인명
+        p.MNF_INCM_DVS_NM || '', // 제조/수입구분
+        p.PRDLST_REG_VALD_DT || '', // 등록유효일자
+        p.PRDLST_REG_DT || '',   // 등록일자
+        p.REG_YN_NM || '',       // 등록여부
+        p.ECLGY_TOXCTY || '',    // 생태독성
         p.condition_code_description || ''
       ])
     ];
     
     const ws = XLSX.utils.aoa_to_sheet(xlsxData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     
-    XLSX.writeFile(wb, `잔류농약기준_${searchedFood}_${new Date().toLocaleDateString()}.xlsx`);
+    // 열 너비 자동 조정
+    const wscols = xlsxData[0].map(() => ({ wch: 15 })); // 기본 너비 15
+    ws['!cols'] = wscols;
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "농약정보");
+    
+    XLSX.writeFile(wb, `농약정보_${searchedFood}_${new Date().toLocaleDateString()}.xlsx`);
+   };
+
+  // 행클릭 핸들러
+  const handleRowClick = async (index, pesticide) => {
+    setLoading(true);
+    try {
+        if (expandedRow === index) {
+            setExpandedRow(null);
+        } else {
+            console.log('상세 정보 요청:', {
+                pesticide: pesticide.pesticide_name_kr,
+                food: searchedFood
+            });
+            
+            const detailData = await api.getPesticideDetail(
+                pesticide.pesticide_name_kr,
+                searchedFood
+            );
+            
+            if (detailData && detailData.length > 0) {
+                const updatedHistory = [...searchHistory];
+                updatedHistory[index] = {
+                    ...updatedHistory[index],
+                    detailData: detailData[0]  // 첫 번째 결과만 사용
+                };
+                setSearchHistory(updatedHistory);
+                setExpandedRow(index);
+            } else {
+                console.log('상세 정보가 없습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('상세 정보 조회 오류:', error);
+    } finally {
+        setLoading(false);
+    }
   };
+
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -338,7 +400,11 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                     {searchHistory
                       .sort((a, b) => a.timestamp - b.timestamp)
                       .map((pesticide, index) => (
-                        <TableRow key={`${pesticide.pesticide_name_kr}-${pesticide.timestamp}`}>
+                        <React.Fragment key={`${pesticide.pesticide_name_kr}-${pesticide.timestamp}`}>
+                          <TableRow 
+                            onClick={() => handleRowClick(index, pesticide)}
+                            sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5' } }}
+                          >
                           <TableCell>{pesticide.pesticide_name_kr}</TableCell>
                           <TableCell>{pesticide.pesticide_name_en}</TableCell>
                           <TableCell sx={{ 
@@ -351,6 +417,73 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                           </TableCell>
                           <TableCell>{pesticide.condition_code_description || ''}</TableCell>
                         </TableRow>
+                        {expandedRow === index && (
+                           <TableRow>
+                            <TableCell colSpan={4}>
+                              <Box sx={{ p: 2, bgcolor: '#f8f8f8' }}>
+                                <Grid container spacing={2}>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>농약명:</Typography>
+                                    <Typography>{pesticide.detailData?.PRDLST_KOR_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>상표명:</Typography>
+                                    <Typography>{pesticide.detailData?.BRND_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>용도:</Typography>
+                                    <Typography>{pesticide.detailData?.PRPOS_DVS_CD_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>작물명:</Typography>
+                                    <Typography>{pesticide.detailData?.CROPS_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>병해충/잡초명:</Typography>
+                                    <Typography>{pesticide.detailData?.SICKNS_HLSCT_NM_WEEDS_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>사용적기:</Typography>
+                                    <Typography>{pesticide.detailData?.USE_PPRTM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>희석배수:</Typography>
+                                    <Typography>{pesticide.detailData?.DILU_DRNG}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>사용횟수:</Typography>
+                                    <Typography>{pesticide.detailData?.USE_TMNO}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>법인명:</Typography>
+                                    <Typography>{pesticide.detailData?.CPR_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>제조/수입구분:</Typography>
+                                    <Typography>{pesticide.detailData?.MNF_INCM_DVS_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>등록유효일자:</Typography>
+                                    <Typography>{pesticide.detailData?.PRDLST_REG_VALD_DT}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>등록일자:</Typography>
+                                    <Typography>{pesticide.detailData?.PRDLST_REG_DT}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>등록여부:</Typography>
+                                    <Typography>{pesticide.detailData?.REG_YN_NM}</Typography>
+                                  </Grid>
+                                  <Grid item xs={3}>
+                                    <Typography variant="subtitle2" gutterBottom>생태독성:</Typography>
+                                    <Typography>{pesticide.detailData?.ECLGY_TOXCTY}</Typography>
+                                  </Grid>
+                                </Grid>
+                              </Box>
+                            </TableCell>
+                         </TableRow>
+                        )}
+                      </React.Fragment>
                       ))}
                   </TableBody>
                 </Table>
