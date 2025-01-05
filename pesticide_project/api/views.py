@@ -1,3 +1,5 @@
+# path of this code : C:\Users\leo\pesticide\pesticide_project\api\views.py
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
@@ -13,6 +15,11 @@ from .models import LimitConditionCode, PesticideLimit
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
 from django.http import HttpResponse
 from django.http import JsonResponse
+from urllib.parse import quote
+import requests
+from django.conf import settings
+import os
+import json
 
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
@@ -73,38 +80,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         pesticide_exists = queryset.exists()
 
-        # 입력된 식품명이 상위분류인지 확인
-        is_category = FoodCategory.objects.filter(
-            Q(main_category__iexact=food) | Q(sub_category__iexact=food)
-        ).exists()
-
-        if is_category:
-            # 상위분류명으로 직접 검색
-            category_matches = queryset.filter(food_name__iexact=food)
-            if category_matches.exists():
-                for match in category_matches:
-                    match.matching_type = 'direct'
-                    match.original_food = food
-                serializer = self.get_serializer(category_matches, many=True)
-                return Response(serializer.data)
-
-        # 일반 식품명으로 처리
-        food_exists = FoodCategory.objects.filter(food_name__iexact=food).exists()
-
-        if not pesticide_exists or not food_exists:
-            return Response({
-                "error": "no_match",
-                "error_type": "input_error",
-                "message": "해당하는 잔류허용기준이 없습니다. 입력하신 내용을 다시 확인해 주세요.",
-                "details": {
-                    "pesticide_exists": pesticide_exists,
-                    "food_exists": food_exists,
-                    "searched_pesticide": pesticide,
-                    "searched_food": food
-                }
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        # base_food_name = food.split('(')[0] if '(' in food else food
+        # 먼저 직접 매칭 시도
         direct_matches = queryset.filter(food_name__iexact=food).order_by(
             Case(
                 When(food_name__iexact=food, then=0),
@@ -117,6 +93,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(direct_matches, many=True)
             return Response(serializer.data)
 
+        # 직접 매칭이 없는 경우에만 FoodCategory 확인
         try:
             category = FoodCategory.objects.get(food_name__iexact=food)
             if category.sub_category:
@@ -124,14 +101,14 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                 if sub_matches.exists():
                     for match in sub_matches:
                         match.matching_type = 'sub'
-                        match.original_food_name = food  # original_food -> original_food_name으로 수정
+                        match.original_food_name = food
                     serializer = self.get_serializer(sub_matches, many=True)
                     return Response(serializer.data)
 
             if category.main_category:
                 main_matches = queryset.filter(food_name__iexact=category.main_category)
                 if main_matches.exists():
-                    for match in main_matches:  # <- 여기에 추가
+                    for match in main_matches:
                         match.matching_type = 'main'
                         match.original_food_name = food
                     serializer = self.get_serializer(main_matches, many=True)
@@ -151,7 +128,78 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             "searched_food": food
         }, status=status.HTTP_404_NOT_FOUND)
 
+    @action(detail=False, methods=['GET'], url_path='detail')
+    def get_detail(self, request):
+        pesticide = request.query_params.get('pesticide')  # 한글 농약명
+        food = request.query_params.get('food')  # 한글 작물명
 
+        # 영문 농약명 조회
+        english_name = PesticideLimit.objects.filter(
+            pesticide_name_kr=pesticide
+        ).values_list('pesticide_name_en', flat=True).first()
+
+        # API 키 및 설정
+        api_key = os.getenv('PESTICIDE_API_KEY')
+        service_id = 'I1910'
+        base_url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/5'
+
+        # URL 구성
+        query_params = []
+        if pesticide:
+            query_params.append(f'PRDLST_KOR_NM={quote(pesticide)}')  # 한글 농약명
+        if food:
+            query_params.append(f'CROPS_NM={quote(food)}')  # 작물명
+
+        # 최종 URL 생성
+        url = f"{base_url}/{'&'.join(query_params)}"
+
+        print(f"Generated URL: {url}")  # 디버깅용 로그
+
+        try:
+            # API 호출
+            response = requests.get(url)
+            response.encoding = 'utf-8'  # UTF-8 설정
+
+            if response.status_code == 200:
+                data = response.json()
+                print(f"API Response: {data}")  # 응답 데이터 확인
+                if 'I1910' in data and 'row' in data['I1910']:
+                    return Response(data['I1910']['row'])
+                return Response({'message': 'No data found', 'details': data})
+            else:
+                return Response({'error': f'API error: {response.status_code}'}, status=response.status_code)
+
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+            return Response({'error': str(e)}, status=500)
+
+    # @action(detail=False, methods=['GET'], url_path='detail')
+    # def get_detail(self, request):
+    #     pesticide = request.query_params.get('pesticide')
+    #     food = request.query_params.get('food')
+    #
+    #     english_name = PesticideLimit.objects.filter(
+    #         pesticide_name_kr=pesticide
+    #     ).values_list('pesticide_name_en', flat=True).first()
+    #
+    #     api_key = os.getenv('PESTICIDE_API_KEY')
+    #     service_id = 'I1910'
+    #     url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/5'
+    #
+    #     if english_name and food:
+    #         url = f'{url}?PRDLST_KOR_NM={quote(english_name)}&CROPS_NM={quote(food)}'
+    #     try:
+    #         response = requests.get(url)
+    #         response.encoding = 'utf-8'
+    #
+    #         if response.status_code == 200:
+    #             data = response.json()
+    #             if 'I1910' in data and 'row' in data['I1910']:
+    #                 return Response(data['I1910']['row'])
+    #             return Response(data)  # 전체 응답 반환
+    #         return Response({'error': f'API error: {response.status_code}'}, status=response.status_code)
+    #     except Exception as e:
+    #         return Response({'error': str(e)}, status=500)
 
     def _log_search(self, pesticide, food, results_count):
         """검색 로그를 기록하는 내부 메서드"""

@@ -24,6 +24,7 @@ filtered_directory_structure.txt
 pesticide_project/pesticide_limits.json
 pesticide_project/api/tree_make.py
 pesticide_project/api/tests.py
+api/management/dumped_data/pesticide_limits.json
 
 # Django
 *.log

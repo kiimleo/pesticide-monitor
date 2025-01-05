@@ -1,4 +1,4 @@
-# settings/base.py
+# path of this code : C:\Users\leo\pesticide\pesticide_project\config\settings\base.py
 
 import os
 from pathlib import Path
@@ -12,6 +12,9 @@ load_dotenv()
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*+=-ytey6bqheq1_s3%ff)-%be7^nrr)gyik4oi$p78l3xl4ok')
+
+# 공공데이터 농약등록정보 인증키 호출
+PESTICIDE_API_KEY = os.getenv('PESTICIDE_API_KEY')
 
 # Application definition
 INSTALLED_APPS = [

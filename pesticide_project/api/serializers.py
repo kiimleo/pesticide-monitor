@@ -1,3 +1,5 @@
+# path of this code : C:\Users\leo\pesticide\pesticide_project\api\serializers.py
+
 from rest_framework import serializers
 from .models import LimitConditionCode, PesticideLimit, User
 

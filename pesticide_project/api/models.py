@@ -1,10 +1,12 @@
+# path of this code : C:\Users\leo\pesticide\pesticide_project\api\models.py
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
 
 class LimitConditionCode(models.Model):
-    code = models.CharField(max_length=2, primary_key=True)
+    code = models.CharField(max_length=3, primary_key=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

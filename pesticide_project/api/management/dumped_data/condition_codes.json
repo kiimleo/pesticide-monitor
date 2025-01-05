@@ -1,0 +1,66 @@
+[
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "†",
+      "description": "수출국의 요청으로 설정된 잔류허용기준을 의미하며, 기준 적용시에는 국내 및 수입농·축·수산물에 동일하게 적용",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "T",
+      "description": "농약의 잠정 잔류허용기준을 의미",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "E",
+      "description": "사용금지되었으나 토양내 잔류하여 농산물에서 검출 가능성이 있는 농약의 잔류허용기준을 의미",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "R",
+      "description": "먼저 재배되는 농산물에 사용된 농약이 토양 내 잔류하여 다음 재배되는 농산물에 검출될 수 있는 농약의 잔류허용기준을 의미",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "f",
+      "description": "고기 중 지방에 대한 기준",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "F",
+      "description": "지용성 농약. 2% 이상의 지방을 함유하는 유제품의 잔류기준은 유의 잔류 기준에 25배를 하여 지방에 대한 기준으로 적용하며, 2% 미만의 지방을 함유하는 유제품의 잔류기준은 유의 잔류기준에 50%를 적용",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "F†",
+      "description": "지용성 농약이면서 수출국 요청 기준",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  },
+  {
+    "model": "api.limitconditioncode",
+    "fields": {
+      "code": "f†",
+      "description": "고기 중 지방에 대한 기준이면서 수출국 요청 기준",
+      "created_at": "2024-10-28T14:25:55.255909+00:00"
+    }
+  }
+]
