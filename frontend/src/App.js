@@ -84,7 +84,7 @@ function MainContent() {
       
       <Box sx={{ mb: 3, textAlign: 'right' }}>
         <Typography variant="caption" color="text.secondary">
-          식품의약품안전처 고시번호 제2024-22호, 2024년 5월 17일 개정사항 반영
+          식품의약품안전처 고시번호 제2024-71호, 2024년 11월 14일 개정사항 반영
         </Typography>
       </Box>
       

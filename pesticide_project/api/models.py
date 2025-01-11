@@ -60,6 +60,32 @@ class FoodCategory(models.Model):
             models.Index(fields=['sub_category']),
         ]
 
+# 정부 공공데이터 API를 호출하여 농약성분 상세 데이터를 Database에 저장하기 위한 model 생성
+class PesticideDetail(models.Model):
+    reg_yn_nm = models.CharField(max_length=100)  # 등록여부
+    use_pprtm = models.CharField(max_length=100)  # 사용시기
+    prdlst_reg_no = models.CharField(max_length=100)  # 등록번호
+    prdlst_reg_dt = models.CharField(max_length=8)  # 등록일자
+    prdlst_reg_vald_dt = models.CharField(max_length=8)  # 등록유효일자
+    mnf_incm_dvs_nm = models.CharField(max_length=100)  # 제조/수입구분
+    persn_lvstck_toxcty = models.CharField(max_length=100)  # 독성
+    use_tmno = models.CharField(max_length=100)  # 사용횟수
+    cpr_nm = models.CharField(max_length=100)  # 법인명
+    prdlst_kor_nm = models.CharField(max_length=200)  # 농약성분명(한글)
+    prdlst_eng_nm = models.CharField(max_length=200)  # 농약성분명(영문)
+    mdc_shap_nm = models.CharField(max_length=100)  # 제형
+    sickns_hlsct_nm_weeds_nm = models.CharField(max_length=200)  # 병해충/잡초명
+    brnd_nm = models.CharField(max_length=100)  # 상표명
+    crops_nm = models.CharField(max_length=100)  # 작물명
+    prpos_dvs_cd_nm = models.CharField(max_length=100)  # 용도구분
+    dilu_drng = models.CharField(max_length=100)  # 희석배수
+    eclgy_toxcty = models.CharField(max_length=100)  # 생태독성
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['prdlst_kor_nm']),
+            models.Index(fields=['crops_nm']),
+        ]
 
 class SearchLog(models.Model):
     search_term = models.CharField(max_length=200)  # 통합 검색어

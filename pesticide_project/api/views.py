@@ -5,21 +5,15 @@ from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Q, Count, Case, When
-from django.db.models.functions import Collate
 from django.utils import timezone
 from datetime import timedelta
 from .serializers import UserSerializer
 from .models import User, SearchLog, FoodCategory
 from rest_framework.filters import SearchFilter
-from .models import LimitConditionCode, PesticideLimit
+from .models import LimitConditionCode, PesticideLimit, PesticideDetail
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
 from django.http import HttpResponse
 from django.http import JsonResponse
-from urllib.parse import quote, unquote
-import requests
-from django.conf import settings
-import os
-import json
 
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
@@ -130,88 +124,44 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['GET'], url_path='detail')
     def get_detail(self, request):
-        pesticide = request.query_params.get('pesticide')  # 한글 농약명
-        food = request.query_params.get('food')  # 한글 작물명
-
-        print(f"1. 원본 입력값:")
-        print(f"pesticide: {pesticide}")
-        print(f"food: {food}")
-
-        # 영문 농약명 조회
-        english_name = PesticideLimit.objects.filter(
-            pesticide_name_kr=pesticide
-        ).values_list('pesticide_name_en', flat=True).first()
-
-        # API 키 및 설정
-        api_key = os.getenv('PESTICIDE_API_KEY')
-        service_id = 'I1910'
-        base_url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/2'
-
-        # URL 구성
-        query_params = []
-        if pesticide:
-            encoded_pesticide = quote(pesticide)
-            query_params.append(f'PRDLST_KOR_NM={quote(pesticide)}')  # 한글 농약성분명
-            print(f"\n2. 인코딩된 농약명:")
-            print(f"Encoded: {encoded_pesticide}")
-            print(f"Decoded: {unquote(encoded_pesticide)}")
-        if food:
-            encoded_food = quote(food)
-            query_params.append(f'CROPS_NM={quote(food)}')  # 작물명
-            print(f"\n3. 인코딩된 작물명:")
-            print(f"Encoded: {encoded_food}")
-            print(f"Decoded: {unquote(encoded_food)}")
-
-        # 최종 URL 생성
-        url = f"{base_url}/{'&'.join(query_params)}"
-
-        print(f"Generated URL: {url}")  # 디버깅용 로그
-
         try:
-            # API 호출
-            response = requests.get(url)
-            response.encoding = 'utf-8'  # UTF-8 설정
+            pesticide = request.query_params.get('pesticide')
+            food = request.query_params.get('food')
 
-            if response.status_code == 200:
-                data = response.json()
-                print(f"API Response: {data}")  # 응답 데이터 확인
-                if 'I1910' in data and 'row' in data['I1910']:
-                    return Response(data['I1910']['row'])
-                return Response({'message': 'No data found', 'details': data})
-            else:
-                return Response({'error': f'API error: {response.status_code}'}, status=response.status_code)
+            # 기본 쿼리 실행
+            details = PesticideDetail.objects.filter(
+                prdlst_kor_nm__icontains=pesticide,
+                crops_nm__icontains=food
+            ).order_by('-prdlst_reg_dt')
+
+            # 농약성분명으로 그룹화된 데이터 구성
+            grouped_data = {}
+            for detail in details:
+                prdlst_kor_nm = detail.prdlst_kor_nm
+                if prdlst_kor_nm not in grouped_data:
+                    grouped_data[prdlst_kor_nm] = {
+                        'pesticide_name': prdlst_kor_nm,
+                        'products': []
+                    }
+
+                grouped_data[prdlst_kor_nm]['products'].append({
+                    'brand_name': detail.brnd_nm,
+                    'purpose': detail.prpos_dvs_cd_nm,
+                    'target_pest': detail.sickns_hlsct_nm_weeds_nm,
+                    'company': detail.cpr_nm,
+                    'reg_date': detail.prdlst_reg_dt
+                })
+
+            # 리스트로 변환
+            result = list(grouped_data.values())
+            return Response(result)
 
         except Exception as e:
-            print(f"Exception occurred: {e}")
-            return Response({'error': str(e)}, status=500)
-
-    # @action(detail=False, methods=['GET'], url_path='detail')
-    # def get_detail(self, request):
-    #     pesticide = request.query_params.get('pesticide')
-    #     food = request.query_params.get('food')
-    #
-    #     english_name = PesticideLimit.objects.filter(
-    #         pesticide_name_kr=pesticide
-    #     ).values_list('pesticide_name_en', flat=True).first()
-    #
-    #     api_key = os.getenv('PESTICIDE_API_KEY')
-    #     service_id = 'I1910'
-    #     url = f'http://openapi.foodsafetykorea.go.kr/api/{api_key}/{service_id}/json/1/5'
-    #
-    #     if english_name and food:
-    #         url = f'{url}?PRDLST_KOR_NM={quote(english_name)}&CROPS_NM={quote(food)}'
-    #     try:
-    #         response = requests.get(url)
-    #         response.encoding = 'utf-8'
-    #
-    #         if response.status_code == 200:
-    #             data = response.json()
-    #             if 'I1910' in data and 'row' in data['I1910']:
-    #                 return Response(data['I1910']['row'])
-    #             return Response(data)  # 전체 응답 반환
-    #         return Response({'error': f'API error: {response.status_code}'}, status=response.status_code)
-    #     except Exception as e:
-    #         return Response({'error': str(e)}, status=500)
+            print(f"Error in get_detail: {str(e)}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _log_search(self, pesticide, food, results_count):
         """검색 로그를 기록하는 내부 메서드"""

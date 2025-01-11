@@ -222,34 +222,25 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
         if (expandedRow === index) {
             setExpandedRow(null);
         } else {
-            console.log('상세 정보 요청:', {
-                pesticide: pesticide.pesticide_name_kr,
-                food: searchedFood
-            });
-            
-            const detailData = await api.getDetailInfo(
+            const response = await api.getDetailInfo(
                 pesticide.pesticide_name_kr,
                 searchedFood
             );
             
-            if (detailData && detailData.length > 0) {
-                const updatedHistory = [...searchHistory];
-                updatedHistory[index] = {
-                    ...updatedHistory[index],
-                    detailData: detailData[0]  // 첫 번째 결과만 사용
-                };
-                setSearchHistory(updatedHistory);
-                setExpandedRow(index);
-            } else {
-                console.log('상세 정보가 없습니다.');
-            }
+            const updatedHistory = [...searchHistory];
+            updatedHistory[index] = {
+                ...updatedHistory[index],
+                detailData: response  // API 응답을 직접 할당
+            };
+            setSearchHistory(updatedHistory);
+            setExpandedRow(index);
         }
     } catch (error) {
         console.error('상세 정보 조회 오류:', error);
     } finally {
         setLoading(false);
     }
-  };
+};
 
 
   return (
@@ -420,70 +411,72 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                           <TableCell>{pesticide.condition_code_description || ''}</TableCell>
                         </TableRow>
                         {expandedRow === index && (
-                           <TableRow>
+                          <TableRow>
                             <TableCell colSpan={4}>
                               <Box sx={{ p: 2, bgcolor: '#f8f8f8' }}>
-                                <Grid container spacing={2}>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>농약명:</Typography>
-                                    <Typography>{pesticide.detailData?.PRDLST_KOR_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>상표명:</Typography>
-                                    <Typography>{pesticide.detailData?.BRND_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>용도:</Typography>
-                                    <Typography>{pesticide.detailData?.PRPOS_DVS_CD_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>작물명:</Typography>
-                                    <Typography>{pesticide.detailData?.CROPS_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>병해충/잡초명:</Typography>
-                                    <Typography>{pesticide.detailData?.SICKNS_HLSCT_NM_WEEDS_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>사용적기:</Typography>
-                                    <Typography>{pesticide.detailData?.USE_PPRTM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>희석배수:</Typography>
-                                    <Typography>{pesticide.detailData?.DILU_DRNG}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>사용횟수:</Typography>
-                                    <Typography>{pesticide.detailData?.USE_TMNO}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>법인명:</Typography>
-                                    <Typography>{pesticide.detailData?.CPR_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>제조/수입구분:</Typography>
-                                    <Typography>{pesticide.detailData?.MNF_INCM_DVS_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>등록유효일자:</Typography>
-                                    <Typography>{pesticide.detailData?.PRDLST_REG_VALD_DT}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>등록일자:</Typography>
-                                    <Typography>{pesticide.detailData?.PRDLST_REG_DT}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>등록여부:</Typography>
-                                    <Typography>{pesticide.detailData?.REG_YN_NM}</Typography>
-                                  </Grid>
-                                  <Grid item xs={3}>
-                                    <Typography variant="subtitle2" gutterBottom>생태독성:</Typography>
-                                    <Typography>{pesticide.detailData?.ECLGY_TOXCTY}</Typography>
-                                  </Grid>
-                                </Grid>
+                                {Array.isArray(pesticide.detailData) && pesticide.detailData.length > 0 ? (
+                                  // 기존 상세 데이터 표시 로직
+                                  pesticide.detailData.map((group, groupIndex) => (
+                                    <Box key={groupIndex} sx={{ mb: 3 }}>
+                                      <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                          pb: 2, 
+                                          color: '#1976d2',
+                                          fontWeight: 500,
+                                          borderBottom: '2px solid #e0e0e0',
+                                          display: 'inline-block',
+                                          paddingX: 2,
+                                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                          borderRadius: '4px'
+                                        }}
+                                      >
+                                        {group.pesticide_name}
+                                      </Typography>
+                                      <Grid container spacing={2} sx={{ mt: 1 }}>
+                                        {group.products && group.products.map((product, productIndex) => (
+                                          <Grid item xs={12} md={12} key={productIndex}>
+                                            <Paper sx={{ p: 2, bgcolor: 'white' }}>
+                                              <Grid container spacing={2}>
+                                                <Grid item xs={3}>
+                                                  <Typography variant="subtitle2" color="text.secondary">상표명</Typography>
+                                                  <Typography>{product.brand_name || '-'}</Typography>
+                                                </Grid>
+                                                <Grid item xs={3}>
+                                                  <Typography variant="subtitle2" color="text.secondary">용도</Typography>
+                                                  <Typography>{product.purpose || '-'}</Typography>
+                                                </Grid>
+                                                <Grid item xs={3}>
+                                                  <Typography variant="subtitle2" color="text.secondary">병해충/잡초명</Typography>
+                                                  <Typography>{product.target_pest || '-'}</Typography>
+                                                </Grid>
+                                                <Grid item xs={3}>
+                                                  <Typography variant="subtitle2" color="text.secondary">법인명</Typography>
+                                                  <Typography>{product.company || '-'}</Typography>
+                                                </Grid>
+                                              </Grid>
+                                            </Paper>
+                                          </Grid>
+                                        ))}
+                                      </Grid>
+                                    </Box>
+                                  ))
+                                ) : (
+                                  // 데이터가 없을 경우 메시지 표시
+                                  <Paper sx={{ 
+                                    p: 3, 
+                                    textAlign: 'center',
+                                    bgcolor: 'warning.light',
+                                    color: 'warning.dark'
+                                  }}>
+                                    <Typography variant="subtitle1">
+                                      상세 데이터가 데이터베이스에 존재하지 않습니다
+                                    </Typography>
+                                  </Paper>
+                                )}
                               </Box>
                             </TableCell>
-                         </TableRow>
+                          </TableRow>
                         )}
                       </React.Fragment>
                       ))}
