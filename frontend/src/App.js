@@ -8,6 +8,7 @@ import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
 import SearchStatistics from './components/SearchStatistics';
+import PesticideImage from './components/PesticideImage';
 
 function MainContent() {
   const [pesticides, setPesticides] = useState([]);
@@ -153,6 +154,7 @@ function App() {
         <Route path="/" element={<MainContent />} />
         <Route path="/signup" element={<SignupForm />} />
         <Route path="/statistics" element={<SearchStatistics />} />
+        <Route path="/pesticide-image" element={<PesticideImage />} />
       </Routes>
     </Router>
   );

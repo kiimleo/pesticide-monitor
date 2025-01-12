@@ -70,7 +70,7 @@ class PesticideDetail(models.Model):
     mnf_incm_dvs_nm = models.CharField(max_length=100)  # 제조/수입구분
     persn_lvstck_toxcty = models.CharField(max_length=100)  # 독성
     use_tmno = models.CharField(max_length=100)  # 사용횟수
-    cpr_nm = models.CharField(max_length=100)  # 법인명
+    cpr_nm = models.CharField(max_length=100)  # 제조사
     prdlst_kor_nm = models.CharField(max_length=200)  # 농약성분명(한글)
     prdlst_eng_nm = models.CharField(max_length=200)  # 농약성분명(영문)
     mdc_shap_nm = models.CharField(max_length=100)  # 제형

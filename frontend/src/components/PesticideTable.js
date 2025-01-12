@@ -179,7 +179,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
     const xlsxData = [
       ['식품명', '농약성분명(한글)', '농약성분명(영문)', '잔류허용기준(mg/kg)','상표명', '용도', 
        '작물명', '병해충/잡초명', '사용적기', '희석배수', '사용횟수', 
-       '법인명', '제조/수입구분', '등록유효일자', '등록일자', 
+       '제조사', '제조/수입구분', '등록유효일자', '등록일자', 
        '등록여부', '생태독성', '비고'],
       ...searchHistory.map(p => [
         searchedFood,
@@ -193,7 +193,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
         p.USE_PPRTM || '',       // 사용적기
         p.DILU_DRNG || '',       // 희석배수
         p.USE_TMNO || '',        // 사용횟수
-        p.CPR_NM || '',          // 법인명
+        p.CPR_NM || '',          // 제조사사
         p.MNF_INCM_DVS_NM || '', // 제조/수입구분
         p.PRDLST_REG_VALD_DT || '', // 등록유효일자
         p.PRDLST_REG_DT || '',   // 등록일자
@@ -440,7 +440,18 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                                               <Grid container spacing={2}>
                                                 <Grid item xs={3}>
                                                   <Typography variant="subtitle2" color="text.secondary">상표명</Typography>
-                                                  <Typography>{product.brand_name || '-'}</Typography>
+                                                  <Typography 
+                                                    onClick={() => window.open(`/pesticide-image?name=${encodeURIComponent(product.brand_name)}&type=${encodeURIComponent(product.purpose)}`, '_blank')}
+                                                    sx={{ 
+                                                      cursor: 'pointer',
+                                                      color: 'primary.main',
+                                                      '&:hover': {
+                                                        textDecoration: 'underline'
+                                                      }
+                                                    }}
+                                                  >
+                                                    {product.brand_name || '-'}
+                                                  </Typography>
                                                 </Grid>
                                                 <Grid item xs={3}>
                                                   <Typography variant="subtitle2" color="text.secondary">용도</Typography>
@@ -451,7 +462,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                                                   <Typography>{product.target_pest || '-'}</Typography>
                                                 </Grid>
                                                 <Grid item xs={3}>
-                                                  <Typography variant="subtitle2" color="text.secondary">법인명</Typography>
+                                                  <Typography variant="subtitle2" color="text.secondary">제조사</Typography>
                                                   <Typography>{product.company || '-'}</Typography>
                                                 </Grid>
                                               </Grid>
