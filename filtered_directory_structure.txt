@@ -31,6 +31,7 @@
       📄 0001_initial.py (.py)
       📄 0002_auto_20241116_0057.py (.py)
       📄 0003_alter_limitconditioncode_code.py (.py)
+      📄 0004_auto_20250111_2253.py (.py)
       📄 __init__.py (.py)
       📁 __pycache__
     📄 models.py (.py)
@@ -40,7 +41,6 @@
       📄 __init__.py (.py)
       📁 __pycache__
     📄 tests.py (.py)
-    📄 tree_make.py (.py)
     📄 views.py (.py)
     📄 __init__.py (.py)
     📁 __pycache__

@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from django.db.models import Q, Count, Case, When
 from django.utils import timezone
 from datetime import timedelta
@@ -62,7 +63,8 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
 
         pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
-        queryset = self.queryset.filter(pesticide_query)
+        # queryset = self.queryset.filter(pesticide_query)
+        queryset = self.queryset.filter(pesticide_query).select_related('condition_code')
 
         if get_all_foods and pesticide:
             queryset = queryset.order_by('food_name')
@@ -70,7 +72,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data)
 
         if not pesticide or not food:
-            return Response([])
+            raise ValidationError("Both pesticide and food parameters are required")
 
         pesticide_exists = queryset.exists()
 

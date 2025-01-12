@@ -1,5 +1,6 @@
-import os
+# 프로젝트의 구조를 써머리하는 용도의 코드
 
+import os
 
 def summarize_structure(root_dir, output_file, level=0, max_depth=3, include_exts=None, exclude_dirs=None):
     if level > max_depth:

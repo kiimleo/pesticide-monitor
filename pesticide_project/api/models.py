@@ -38,9 +38,8 @@ class PesticideLimit(models.Model):
         verbose_name = '농약 잔류허용기준'
         verbose_name_plural = '농약 잔류허용기준'
         indexes = [
-            models.Index(fields=['pesticide_name_kr']),
-            models.Index(fields=['pesticide_name_en']),
-            models.Index(fields=['food_name']),
+            models.Index(fields=['pesticide_name_kr', 'food_name']),
+            models.Index(fields=['pesticide_name_en', 'food_name'])
         ]
 
     def __str__(self):
