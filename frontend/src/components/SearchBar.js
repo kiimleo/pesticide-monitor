@@ -1,3 +1,5 @@
+// frontend/src/components/SearchBar.js
+
 import React, { useState } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 

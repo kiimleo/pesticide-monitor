@@ -1,4 +1,4 @@
-// src/components/SignupForm.js
+// frontend/src/components/SignupForm.js
 import React, { useState } from 'react';
 import {
   Box,

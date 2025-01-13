@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-env/
+.env/
 venv/
 .env
 .venv
@@ -22,9 +22,8 @@ coverage.xml
 .python-version
 filtered_directory_structure.txt
 pesticide_project/pesticide_limits.json
-pesticide_project/api/tree_make.py
+pesticide_project/api/management/commands/tree_make.py
 pesticide_project/api/tests.py
-api/management/dumped_data/pesticide_limits.json
 
 # Django
 *.log

@@ -1,4 +1,4 @@
-// path of this code: C:\Users\leo\pesticide\frontend\src\App.js
+// path of this code: frontend/src/App.js
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SignupForm from './components/SignupForm';

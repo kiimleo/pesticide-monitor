@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 
 def test_pesticide_api():
-    # .env 파일 로드
+    # ..env 파일 로드
     load_dotenv()
 
     # 환경변수에서 API 키 가져오기

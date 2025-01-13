@@ -1,4 +1,4 @@
-// path of this code : C:\Users\leo\pesticide\frontend\src\components\PesticideTable.js
+// path of this code : frontend/src/components/PesticideTable.js
 
 import React, { useState, useEffect, useRef } from 'react';
 import {

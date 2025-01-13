@@ -1,6 +1,7 @@
 # 로컬 DB에 저장된 DB를 Django 라이브 DB로 옮기기 위한 코드
 # 잔류농약 스팩 csv를 수동으로 만든 후에 이 코드로 json으로 저장
 # 같은 디렉토리에서 다음 명령어로 실행하면 잔류농약데이터에 대한 json이 생성됨: python convert_csv_to_json.py
+# todo 주의점 : condition_codes.json 항상 이 데이터 먼저 채워넣고, pesticide_limits.json을 채워 넣어야 오류 안남(외래 키 제약조건때문)
 
 import pandas as pd
 import json

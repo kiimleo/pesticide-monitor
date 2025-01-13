@@ -1,4 +1,4 @@
-# path of this code : C:\Users\leo\pesticide\pesticide_project\api\models.py
+# path of this code : pesticide_project/api/models.py
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser

@@ -22,7 +22,7 @@ def summarize_structure(root_dir, output_file, level=0, max_depth=3, include_ext
 
 
 # 사용 예시: 특정 확장자만 포함하고, 일부 디렉토리 제외
-root_directory = r"C:\Users\leo\pesticide"
+root_directory = r"/Users/leokim/PPJT/pesticide-monitor"
 output_path = os.path.join(root_directory, "filtered_directory_structure.txt")
 
 with open(output_path, "w", encoding="utf-8") as output_file:

@@ -1,4 +1,4 @@
-# settings/production.py
+# pesticide_project/config/settings/production.py
 
 from .base import *
 import dj_database_url

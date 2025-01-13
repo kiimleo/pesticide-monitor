@@ -1,4 +1,4 @@
-// src/components/PesticideImage.js
+// frontend/src/components/PesticideImage.js
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Paper } from '@mui/material';
 

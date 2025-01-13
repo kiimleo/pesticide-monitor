@@ -1,3 +1,5 @@
+# pesticide_project/api/apps.py
+
 from django.apps import AppConfig
 
 

@@ -1,7 +1,5 @@
 # 정부 공공데이터 api를 통해 정부의 농약상세 DB를 Django 커스텀 커맨드를 만들어 나의 데이터베이스와 동기화를 수행
-# command : python manage.py sync_publicApi_pesticide_detail.py
-
-# sync_publicApi_pesticide_detail.py
+# command : python manage.py sync_publicApi_pesticide_detail
 
 from django.core.management.base import BaseCommand
 from api.models import PesticideDetail
@@ -16,8 +14,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--date',
-            default='20190101',
-            help='동기화 기준일자 (YYYYMMDD 형식, 기본값: 20190101)'
+            default='20170101',
+            help='동기화 기준일자 (YYYYMMDD 형식, 기본값: 20170101)'
         )
 
     def handle(self, *args, **options):
@@ -40,8 +38,11 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR('API 응답 형식이 올바르지 않습니다.'))
                 return
 
-            total_count = int(data['I1910']['total_count'])
-            self.stdout.write(self.style.SUCCESS(f'총 {total_count:,}개의 데이터를 동기화합니다.'))
+            if 'I1910' in data and 'total_count' in data['I1910']:
+                total_count = int(data['I1910']['total_count'])
+                self.stdout.write(self.style.SUCCESS(f'총 {total_count:,}개의 데이터를 동기화합니다.'))
+            else:
+                self.stdout.write(self.style.ERROR('total_count를 찾을 수 없습니다.'))
 
             # 기존 데이터 삭제
             deleted_count = PesticideDetail.objects.all().delete()[0]

@@ -1,4 +1,4 @@
-# path of this code : C:\Users\leo\pesticide\pesticide_project\config\settings\local.py
+# path of this code : pesticide_project/config/settings/local.py
 
 from .base import *
 

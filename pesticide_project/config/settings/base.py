@@ -1,4 +1,4 @@
-# path of this code : C:\Users\leo\pesticide\pesticide_project\config\settings\base.py
+# path of this code : pesticide_project/config/settings/base.py
 
 import os
 from pathlib import Path
