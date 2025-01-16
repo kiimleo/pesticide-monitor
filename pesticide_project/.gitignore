@@ -4,9 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-.env/
 venv/
-.env
 .venv
 pip-log.txt
 pip-delete-this-directory.txt
@@ -20,32 +18,28 @@ coverage.xml
 *.log
 .pytest_cache/
 .python-version
-filtered_directory_structure.txt
-pesticide_project/pesticide_limits.json
-pesticide_project/api/management/commands/tree_make.py
-pesticide_project/api/tests.py
 
 # Django
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
 
-# VS Code
+# Project specific
+filtered_directory_structure.txt
+pesticide_project/pesticide_limits.json
+pesticide_project/api/management/commands/tree_make.py
+pesticide_project/api/tests.py
+
+# IDEs and Editors
 .vscode/
 *.code-workspace
-
-# PyCharm
 .idea/
 
 # Environment variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 
 # Docker
 Dockerfile.local

@@ -1,20 +1,24 @@
 # path of this code : pesticide_project/config/settings/base.py
 
+import environ
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+
+# Initialize environ
+env = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # 상위 디렉토리로 한 단계 더 올라가도록 수정
 
-# Load environment variables
-load_dotenv()
+# Read .env file
+env_path = BASE_DIR / '.env'
+environ.Env.read_env(env_path)  # django-environ 방식
 
+# env()를 사용하여 환경변수 가져오기
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*+=-ytey6bqheq1_s3%ff)-%be7^nrr)gyik4oi$p78l3xl4ok')
-
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-*+=-ytey6bqheq1_s3%ff)-%be7^nrr)gyik4oi$p78l3xl4ok')
 # 공공데이터 농약등록정보 인증키 호출
-PESTICIDE_API_KEY = os.getenv('PESTICIDE_API_KEY')
+PESTICIDE_API_KEY = env('PESTICIDE_API_KEY', default=None)
 
 # Application definition
 INSTALLED_APPS = [

@@ -5,23 +5,24 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pesticide_db',
-        'USER': 'postgres',
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': env('PGDATABASE', default=''),
+        'USER': env('PGUSER', default=''),
+        'PASSWORD': env('PGPASSWORD', default=''),
+        'HOST': env('PGHOST', default='localhost'),
+        'PORT': env('PGPORT', default='5432'),
     }
 }
 
 # CORS settings for local development
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React 개발 서버
+    "http://127.0.0.1:3000",  # React 개발 서버 (IP 주소 사용시)
 ]
 
 # 로컬 개발환경에서의 정적 파일 설정
