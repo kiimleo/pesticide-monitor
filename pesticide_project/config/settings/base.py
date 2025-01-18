@@ -8,17 +8,15 @@ from pathlib import Path
 env = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # 상위 디렉토리로 한 단계 더 올라가도록 수정
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Read .env file
 env_path = BASE_DIR / '.env'
-environ.Env.read_env(env_path)  # django-environ 방식
+environ.Env.read_env(env_path)
 
-# env()를 사용하여 환경변수 가져오기
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-*+=-ytey6bqheq1_s3%ff)-%be7^nrr)gyik4oi$p78l3xl4ok')
-# 공공데이터 농약등록정보 인증키 호출
-PESTICIDE_API_KEY = env('PESTICIDE_API_KEY', default=None)
+# Security settings
+SECRET_KEY = env('SECRET_KEY')
+PESTICIDE_API_KEY = env('PESTICIDE_API_KEY')
 
 # Application definition
 INSTALLED_APPS = [

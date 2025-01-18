@@ -20,6 +20,22 @@
     📄 temp.txt (.txt)
     📄 urls.py (.py)
     📄 wsgi.py (.py)
+  📁 staticfiles
+    📁 admin
+      📁 css
+      📁 js
+      📁 img
+      📁 fonts
+    📁 rest_framework
+      📁 css
+      📁 js
+      📁 docs
+      📁 img
+      📁 fonts
+    📁 debug_toolbar
+      📁 css
+      📁 js
+  📁 static
   📁 api
     📁 migrations
       📄 __init__.py (.py)
