@@ -1,4 +1,4 @@
-# 정부 공공데이터 api를 통해 정부의 농약상세 DB를 Django 커스텀 커맨드를 만들어 나의 데이터베이스와 동기화를 수행
+# 정부 공공데이터 api를 통해 정부의 농약상세 DB를 Django 커스텀 커맨드를 만들어 나의 데이터베이스와 동기화를 수행하는 코드
 # command : python manage.py sync_publicApi_pesticide_detail
 
 from django.core.management.base import BaseCommand
