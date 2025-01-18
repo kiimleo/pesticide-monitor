@@ -1,5 +1,6 @@
 # Django의 Custom Command입니다, 정부에서 제공하는 농약스펙에 내가 찾는 식품명이 존재하지 않을 경우 카테고리에서 대표 식품으로 조회하는 용도.
 # python manage.py import_food_categories 실행하면, DB에 데이터가 업로드 되는 것까지가 이 코드의 역할
+# 경로 /Users/leokim/PPJT/pesticide-monitor/pesticide_project 에서 실행
 
 from django.core.management.base import BaseCommand
 from api.models import FoodCategory
