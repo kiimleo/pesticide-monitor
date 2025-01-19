@@ -8,6 +8,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '[::1]',
+    '192.168.0.50', # 내부고정 ip
+    '115.139.147.225',  # 외부에서 조회되는 내서버의 고정 ip
 ]
 
 # 미들웨어 설정
@@ -41,9 +43,10 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-# CORS 설정
+# CORS 설정에 외부 접속 허용
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
+    'http://115.139.147.225:3000'  # React 프론트엔드 서버
 ]
 
 # 로깅 설정

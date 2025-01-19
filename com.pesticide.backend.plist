@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pesticide.backend</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/leokim/PPJT/pesticide-monitor/pesticide_venv/bin/python</string>
+        <string>/Users/leokim/PPJT/pesticide-monitor/pesticide_project/manage.py</string>
+        <string>runserver</string>
+        <string>0.0.0.0:8000</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/tmp/pesticide.backend.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/pesticide.backend.out</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DJANGO_SETTINGS_MODULE</key>
+        <string>config.settings.production</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>/Users/leokim/PPJT/pesticide-monitor/pesticide_project</string>
+</dict>
+</plist>
