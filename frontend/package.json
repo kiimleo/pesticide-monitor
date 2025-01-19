@@ -23,12 +23,12 @@
     "env-cmd": "^10.1.0"
   },
   "scripts": {
-    "start": "env-cmd -f .env.development react-scripts start",
-    "start:prod": "env-cmd -f .env.production react-scripts start",
+    "start": "env-cmd -f .env.development react-scripts start", 
+    "start:external": "env-cmd -f .env.development react-scripts start --host 0.0.0.0",
+    "start:prod": "env-cmd -f .env.production react-scripts start --host 0.0.0.0",
     "build": "env-cmd -f .env.production react-scripts build",
     "build:dev": "env-cmd -f .env.development react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test": "react-scripts test"
   },
   "eslintConfig": {
     "extends": [

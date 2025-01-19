@@ -12,6 +12,13 @@ ALLOWED_HOSTS = [
     '115.139.147.225',  # 외부에서 조회되는 내서버의 고정 ip
 ]
 
+
+# CORS 설정에 외부 접속 허용
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://115.139.147.225:3000'  # React 프론트엔드 서버
+]
+
 # 미들웨어 설정
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -41,12 +48,6 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
-]
-
-# CORS 설정에 외부 접속 허용
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://115.139.147.225:3000'  # React 프론트엔드 서버
 ]
 
 # 로깅 설정
