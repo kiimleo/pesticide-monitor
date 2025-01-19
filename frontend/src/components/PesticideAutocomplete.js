@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Autocomplete, TextField, CircularProgress } from '@mui/material';
 import { debounce } from 'lodash';
-import { api } from '../services/api';
+import { API_BASE_URL, api } from '../services/api'; // API_BASE_URL과 api 가져오기
+
 
 const PesticideAutocomplete = ({ value, onChange, onReset }) => {
   const [options, setOptions] = useState([]);
@@ -17,15 +18,27 @@ const PesticideAutocomplete = ({ value, onChange, onReset }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchSuggestions = useCallback(
     debounce(async (query) => {
+      // query 값이 비어 있거나 너무 짧은 경우 요청하지 않음
       if (!query || query.length < 2) {
+        console.log('Query too short:', query);
         setOptions([]);
         return;
       }
+  
       setLoading(true);
       try {
+        // 로그 추가: query와 URL 출력
+        console.log('Query for autocomplete:', query);
+        console.log('Autocomplete full URL:', `${API_BASE_URL}/api/pesticides/autocomplete/?query=${query}`);
+  
+        // API 호출
         const response = await api.getPesticideAutocomplete(query);
+  
+        // 응답 데이터 설정
+        console.log('Autocomplete response:', response);
         setOptions(response);
       } catch (error) {
+        // 에러 로그 출력
         console.error('Failed to fetch suggestions:', error);
         setOptions([]);
       } finally {
@@ -34,6 +47,7 @@ const PesticideAutocomplete = ({ value, onChange, onReset }) => {
     }, 300),
     []
   );
+  
 
   return (
     <Autocomplete

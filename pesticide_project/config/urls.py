@@ -1,4 +1,4 @@
-# path of this code :C:\Users\leo\pesticide\pesticide_project\config\urls.py
+# path of this code : pesticide_project/config/urls.py
 
 from django.contrib import admin
 from django.urls import path, include
