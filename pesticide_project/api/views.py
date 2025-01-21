@@ -50,6 +50,16 @@ class LimitConditionCodeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LimitConditionCodeSerializer
     pass
 
+def format_log_message(type, **kwargs):
+    time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+    if type == 'search':
+        return f"🔍 [Search] {time}, Pesticide: {kwargs['pesticide']}, Food: {kwargs['food']}"
+    elif type == 'autocomplete':
+        return f"⌨️  [Autocomplete] {time}, Query: {kwargs['query']}"
+    elif type == 'detail':
+        return f"📋 [Detail] {time}, Pesticide: {kwargs['pesticide']}, Food: {kwargs['food']}"
+    return ""
+
 
 class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PesticideLimit.objects.all()
@@ -62,10 +72,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
 
-        # 간단한 검색 로그 출력
+        # 검색 로그 출력
         if pesticide and food:
-            print(
-                f"[Search] Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}, Pesticide: {pesticide}, Food: {food}")
+            print(format_log_message('search', pesticide=pesticide, food=food))
 
         pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
         # queryset = self.queryset.filter(pesticide_query)
@@ -134,6 +143,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             pesticide = request.query_params.get('pesticide')
             food = request.query_params.get('food')
+
+            # 상세정보 로그 출력
+            if pesticide and food:
+                print(format_log_message('detail', pesticide=pesticide, food=food))
 
             # 기본 쿼리 실행
             details = PesticideDetail.objects.filter(
@@ -222,9 +235,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     def autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
 
-        # 자동완성 검색어 로그 출력
+        # 자동완성 로그 출력
         if len(query) >= 2:
-            print(f"[Autocomplete] Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}, Query: {query}")
+            print(format_log_message('autocomplete', query=query))
 
         if len(query) < 2:
             return Response([])
