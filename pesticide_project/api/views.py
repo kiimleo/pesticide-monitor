@@ -62,6 +62,11 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
 
+        # 간단한 검색 로그 출력
+        if pesticide and food:
+            print(
+                f"[Search] Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}, Pesticide: {pesticide}, Food: {food}")
+
         pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
         # queryset = self.queryset.filter(pesticide_query)
         queryset = self.queryset.filter(pesticide_query).select_related('condition_code')
@@ -216,6 +221,11 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['GET'])
     def autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
+
+        # 자동완성 검색어 로그 출력
+        if len(query) >= 2:
+            print(f"[Autocomplete] Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}, Query: {query}")
+
         if len(query) < 2:
             return Response([])
 
