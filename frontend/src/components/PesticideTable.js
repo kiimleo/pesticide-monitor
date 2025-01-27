@@ -33,10 +33,26 @@ import {
 import { api } from '../services/api';
 import * as XLSX from 'xlsx';
 
-// 기존의 formatResidueLimit 함수 유지
-const formatResidueLimit = (value) => {
+// formatResidueLimit 함수 유지
+const formatResidueLimit = (value, conditionCode) => {
   const truncated = Math.floor(value * 100) / 100;
-  return truncated.toFixed(2).endsWith('0') ? truncated.toFixed(1) : truncated.toFixed(2);
+  const numericPart = truncated.toFixed(2).endsWith('0') 
+    ? truncated.toFixed(1) 
+    : truncated.toFixed(2);
+    
+  if (!conditionCode) return numericPart;
+  
+  // 괄호가 필요한 코드들
+  const codesNeedingParentheses = ['f', 'F', 'E'];
+
+  // † 코드는 위첨자로 표시
+  if (conditionCode === '†') {
+    return <span>{numericPart}<sup>{conditionCode}</sup></span>;
+  }
+  
+  return codesNeedingParentheses.includes(conditionCode)
+    ? `${numericPart}(${conditionCode})`
+    : `${numericPart}${conditionCode}`;
 };
 
 const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
@@ -405,7 +421,10 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                             fontWeight: pesticide.max_residue_limit ? 'normal' : 'medium'
                           }}>
                             {pesticide.max_residue_limit 
-                              ? formatResidueLimit(pesticide.max_residue_limit)
+                              ? formatResidueLimit(
+                                  pesticide.max_residue_limit, 
+                                  pesticide.condition_code_symbol
+                                )
                               : '허가되지 않은 농약성분'}
                           </TableCell>
                           <TableCell>{pesticide.condition_code_description || ''}</TableCell>
