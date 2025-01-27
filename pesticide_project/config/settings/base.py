@@ -115,3 +115,25 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+# Allowed hosts
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '115.139.147.225']
+
+# Cross-Origin Resource Sharing (CORS) 설정
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React 프론트엔드 (로컬 개발 환경)
+    "http://115.139.147.225:3000",  # 임시 외부 접속 URL
+    "https://www.findpest.com",  # 향후 배포할 도메인
+]
+
+# CORS 헤더 노출 설정 (필요할 경우 추가)
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'accept',
+    'origin',
+    'user-agent',
+]
+
+# Credential 허용 (필요할 경우)
+CORS_ALLOW_CREDENTIALS = True

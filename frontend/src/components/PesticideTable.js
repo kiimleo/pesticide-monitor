@@ -339,7 +339,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                   <Grid item xs>
                     {/* 레이블 추가 */}
                     <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                      농약성분명 추가 검색
+                      추가 검색할 농약성분명 입력
                     </Typography>
                     <PesticideAutocomplete
                       value={newPesticideName}
