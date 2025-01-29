@@ -40,7 +40,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'config.middleware.RequestLoggerMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -124,7 +123,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '115.139.147.225']
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React 프론트엔드 (로컬 개발 환경)
     "http://115.139.147.225:3000",  # 임시 외부 접속 URL
-    "https://www.findpest.com",  # 향후 배포할 도메인
+    "https://www.findpest.kr",  # 향후 배포할 도메인, hosting by Gabia
 ]
 
 # CORS 헤더 노출 설정 (필요할 경우 추가)
@@ -138,3 +137,12 @@ CORS_ALLOW_HEADERS = [
 
 # Credential 허용 (필요할 경우)
 CORS_ALLOW_CREDENTIALS = True
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')    # Gmail 주소
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')    # Gmail 앱 비밀번호 <-- https://myaccount.google.com/apppasswords 여기서생성
+DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER')
