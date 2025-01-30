@@ -1,6 +1,11 @@
 📁 frontend
   📁 public
     📄 robots.txt (.txt)
+  📁 build
+    📁 static
+      📁 css
+      📁 js
+    📄 robots.txt (.txt)
   📁 src
     📁 components
     📁 services
@@ -36,6 +41,7 @@
       📁 css
       📁 js
   📁 static
+  📁 scripts
   📁 api
     📁 migrations
       📄 __init__.py (.py)
@@ -62,6 +68,7 @@
     📄 tests.py (.py)
     📄 views.py (.py)
   📄 manage.py (.py)
+  📁 backups
   📁 .idea
     📁 inspectionProfiles
 📄 requirement.txt (.txt)

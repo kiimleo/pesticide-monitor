@@ -5,22 +5,22 @@ from .base import *
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    'findpest.kr',
+    'www.findpest.kr',
     'localhost',
     '127.0.0.1',
     '[::1]',
     '192.168.0.50',  # 내부고정 ip
     '115.139.147.225',  # 외부에서 조회되는 내서버의 고정 ip
-    '0.0.0.0',
-    'findpest.kr',
-    'www.findpest.kr'
+    '0.0.0.0'
 ]
 
 
 # CORS 설정에 외부 접속 허용
 CORS_ALLOWED_ORIGINS = [
+    'https://findpest.kr',
+    'https://www.findpest.kr',
     'http://localhost:3000',
-    'http://115.139.147.225:3000',  # React 프론트엔드 서버
-    'http://127.0.0.1:3000'
 ]
 
 # 미들웨어 설정

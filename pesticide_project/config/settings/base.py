@@ -10,8 +10,8 @@ env = environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Read .env file
-env_path = BASE_DIR / '.env'
+# Read .env.production file
+env_path = BASE_DIR / '.env.production'
 environ.Env.read_env(env_path)
 
 # Security settings
@@ -117,13 +117,13 @@ CORS_ALLOW_METHODS = [
 ]
 
 # Allowed hosts
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '115.139.147.225']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'findpest.kr', 'www.findpest.kr']
 
 # Cross-Origin Resource Sharing (CORS) 설정
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React 프론트엔드 (로컬 개발 환경)
-    "http://115.139.147.225:3000",  # 임시 외부 접속 URL
-    "https://www.findpest.kr",  # 향후 배포할 도메인, hosting by Gabia
+    "http://findpest.kr",
+    "https://www.findpest.kr",
 ]
 
 # CORS 헤더 노출 설정 (필요할 경우 추가)

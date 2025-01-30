@@ -5,7 +5,7 @@ BACKUP_DIR="$(dirname $(dirname $0))/backups"  # 프로젝트 루트의 backups 
 BACKUP_NAME="pesticide_db_$(date +%Y%m%d_%H%M%S).sql"
 LOG_FILE="$BACKUP_DIR/backup.log"
 
-# 환경변수 설정 (Django의 .env 파일과 동일한 정보 사용)
+# 환경변수 설정 (Django의 .env.production 파일과 동일한 정보 사용)
 export PGDATABASE="pesticide_db"
 export PGUSER="postgres"  # 실제 DB 사용자명으로 변경
 export PGPASSWORD="952151"  # 실제 DB 비밀번호로 변경

@@ -38,7 +38,7 @@ pesticide_project/api/tests.py
 .idea/
 
 # Environment variables
-.env
+.env.production
 .env.*
 
 # Docker
