@@ -8,7 +8,7 @@ console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
 // API 기본 URL 설정
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://115.139.147.225:8000";
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://findpest.kr/api";
 
 
 console.log('API Configuration:', {
@@ -38,7 +38,7 @@ export const api = {
   getPesticideAutocomplete: async (query) => {
     try {
       console.log('Autocomplete query:', query);
-      const response = await axios.get(`${API_BASE_URL}/api/pesticides/autocomplete/`, {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/autocomplete/`, {
         params: { query },
       });
       console.log('Autocomplete response:', response.data);
@@ -53,7 +53,7 @@ export const api = {
   getPesticides: async (params) => {
     try {
       console.log('Pesticides params:', params);
-      const response = await axios.get(`${API_BASE_URL}/api/pesticides/`, {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
         params,
       });
       return response.data;
@@ -78,7 +78,7 @@ export const api = {
   searchPesticides: async ({ pesticide, food }) => {
     try {
       console.log('Search parameters:', { pesticide, food });
-      const response = await axios.get(`${API_BASE_URL}/api/pesticides/`, {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
         params: { pesticide, food },
       });
       return response.data;
@@ -92,7 +92,7 @@ export const api = {
   getDetailInfo: async (pesticide, food) => {
     try {
       console.log('Fetching detail info:', { pesticide, food });
-      const response = await axios.get(`${API_BASE_URL}/api/pesticides/detail/`, {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/detail/`, {
         params: { pesticide, food },
       });
       return response.data;

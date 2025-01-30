@@ -1,4 +1,4 @@
-#!/usr/bin/.env bash
+#!/usr/bin/.env.production bash
 set -o errexit  # 오류 발생 시 스크립트 종료
 
 pip install -r requirements.txt
