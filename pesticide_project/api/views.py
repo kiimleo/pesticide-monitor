@@ -68,13 +68,17 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['pesticide_name_kr', 'pesticide_name_en', 'food_name']
 
     def list(self, request):
-        pesticide = request.query_params.get('pesticide', '').strip().replace(' ', '')
+        pesticide = request.query_params.get('pesticide', '').strip()
         food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
 
         # 검색 로그 출력
         if pesticide and food:
             print(format_log_message('search', pesticide=pesticide, food=food))
+
+        # 디버그용
+        # if pesticide and food:
+        #     print(f"Debug - Search params - Pesticide: '{pesticide}', Food: '{food}'")
 
         pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
         # queryset = self.queryset.filter(pesticide_query)

@@ -28,10 +28,10 @@ function MainContent() {
       setError(null);
       setSearchedFood(filters.food);
       
-      // 공백 제거 처리
+      // 앞뒤 공백만 제거하도록 수정
       const params = {
-        pesticide: filters.pesticide.trim().replace(/\s+/g, ''),  // 모든 공백 제거
-        food: filters.food.trim()  // 앞뒤 공백만 제거
+      pesticide: filters.pesticide.trim(),  // 앞뒤 공백만 제거
+      food: filters.food.trim()  // 앞뒤 공백만 제거
       };
       
       try {
