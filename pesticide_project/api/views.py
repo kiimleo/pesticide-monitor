@@ -76,10 +76,6 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         if pesticide and food:
             print(format_log_message('search', pesticide=pesticide, food=food))
 
-        # 디버그용
-        # if pesticide and food:
-        #     print(f"Debug - Search params - Pesticide: '{pesticide}', Food: '{food}'")
-
         pesticide_query = Q(pesticide_name_kr__icontains=pesticide) | Q(pesticide_name_en__icontains=pesticide)
         # queryset = self.queryset.filter(pesticide_query)
         queryset = self.queryset.filter(pesticide_query).select_related('condition_code')
@@ -105,6 +101,8 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         if direct_matches.exists():
             serializer = self.get_serializer(direct_matches, many=True)
+            # 검색 결과가 있는 경우 로깅
+            self._log_search(pesticide, food, direct_matches.count())
             return Response(serializer.data)
 
         # 직접 매칭이 없는 경우에만 FoodCategory 확인
@@ -130,6 +128,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         except FoodCategory.DoesNotExist:
             pass
+
+        # 검색 결과가 없는 경우도 로깅 (results_count=0)
+        self._log_search(pesticide, food, 0)
 
         pesticide_info = queryset.first()
         return Response({
@@ -189,25 +190,34 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
     def _log_search(self, pesticide, food, results_count):
         """검색 로그를 기록하는 내부 메서드"""
-        # 클라이언트 IP 가져오기
-        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = self.request.META.get('REMOTE_ADDR')
+        try:
+            # 클라이언트 IP 가져오기
+            x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0].strip()
+            else:
+                ip = self.request.META.get('REMOTE_ADDR')
 
-        # 검색어 조합
-        search_term = f"농약: {pesticide if pesticide else '-'}, 식품: {food if food else '-'}"
+            # User Agent 정보 가져오기
+            user_agent = self.request.META.get('HTTP_USER_AGENT', '')
 
-        # 검색 로그 저장
-        SearchLog.objects.create(
-            search_term=search_term,
-            pesticide_term=pesticide,  # 농약명 입력
-            food_term=food,  # 식품명 입력
-            results_count=results_count,  # 검색 결과 개수 입력
-            ip_address=ip,
-            user_agent=self.request.META.get('HTTP_USER_AGENT')
-        )
+            # 검색어 조합
+            search_term = f"농약: {pesticide}, 식품: {food}"
+
+            # 검색 로그 저장
+            SearchLog.objects.create(
+                search_term=search_term,
+                pesticide_term=pesticide,
+                food_term=food,
+                results_count=results_count,
+                ip_address=ip,
+                user_agent=user_agent
+            )
+
+            print(f"Search logged - IP: {ip}, Terms: {search_term}, Results: {results_count}")
+
+        except Exception as e:
+            print(f"Error logging search: {str(e)}")
 
     @action(detail=False, methods=['GET'])
     def search_statistics(self, request):
@@ -253,6 +263,34 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(results)
 
+    @action(detail=False, methods=['GET'])
+    def search_logs(self, request):
+        """검색 로그를 조회하는 엔드포인트"""
+        # 관리자만 접근 가능하도록 설정
+        if not request.user.is_staff:
+            return Response({"error": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            # 최근 100개 로그 조회
+            logs = SearchLog.objects.all().order_by('-timestamp')[:100]
+
+            data = [{
+                'timestamp': log.timestamp,
+                'ip_address': log.ip_address,
+                'search_term': log.search_term,
+                'pesticide_term': log.pesticide_term,
+                'food_term': log.food_term,
+                'results_count': log.results_count,
+                'user_agent': log.user_agent
+            } for log in logs]
+
+            return Response(data)
+
+        except Exception as e:
+            return Response(
+                {"error": f"로그 조회 중 오류가 발생했습니다: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 def index(request):
     """루트 경로에 접근할 때 표시되는 기본 인덱스 뷰"""
@@ -260,25 +298,3 @@ def index(request):
 
 def health_check(request):
     return JsonResponse({"status": "ok"}, status=200)
-
-
-@csrf_exempt
-def create_admin(request):
-    try:
-        print("Starting admin creation process...")
-        User = get_user_model()
-
-        if not User.objects.filter(email='challaforce@gmail.com').exists():
-            user = User.objects.create_superuser(
-                username='leo',  # username 추가
-                email='challaforce@gmail.com',
-                password='!q2w3e4r5t'
-            )
-            return JsonResponse({"message": "Admin user created successfully"})
-        return JsonResponse({"message": "Admin user already exists"})
-
-    except Exception as e:
-        return JsonResponse({
-            "error": str(e),
-            "type": type(e).__name__
-        }, status=500)

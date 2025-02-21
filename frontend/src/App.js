@@ -1,6 +1,6 @@
 // path of this code: frontend/src/App.js
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import SignupForm from './components/SignupForm';
 import React, { useState } from 'react';
 import { Container, Typography, Box, CircularProgress, Paper } from '@mui/material';
@@ -147,6 +147,13 @@ function MainContent() {
   );
 }
 
+function AdminRedirect() {
+  React.useEffect(() => {
+    window.location.href = 'https://findpest.kr/api/admin';
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <Router>
@@ -155,6 +162,7 @@ function App() {
         <Route path="/signup" element={<SignupForm />} />
         <Route path="/statistics" element={<SearchStatistics />} />
         <Route path="/pesticide-image" element={<PesticideImage />} />
+        <Route path="/admin/*" element={<AdminRedirect />} />
       </Routes>
     </Router>
   );

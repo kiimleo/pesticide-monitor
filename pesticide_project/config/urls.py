@@ -8,8 +8,7 @@ from api.views import (
    PesticideLimitViewSet,
    UserViewSet,
    index,
-   health_check,
-   create_admin
+   health_check
 )
 from django.conf import settings
 
@@ -29,9 +28,9 @@ urlpatterns = [
     path('health/', health_check),
     path('api/auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
+    path('api/admin/', admin.site.urls),
     path('api/', include(router.urls)),  # API 라우터 포함
     path('', index, name='index'),
-    path('create-admin/', create_admin, name='create_admin'),
 ]
 
 # DEBUG 모드에서만 Debug Toolbar 추가
