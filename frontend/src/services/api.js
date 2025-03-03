@@ -20,6 +20,36 @@ console.log('API Configuration:', {
 // PubChem API URL
 const PUBCHEM_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
 
+// 농약성분명 자동완성 함수 - 별도 export
+export const getPesticideAutocomplete = async (query) => {
+  try {
+    console.log('Autocomplete query:', query);
+    const response = await axios.get(`${API_BASE_URL}/pesticides/autocomplete/`, {
+      params: { query },
+    });
+    console.log('Autocomplete response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Autocomplete fetch error:', error);
+    throw error;
+  }
+};
+
+// 식품명 자동완성 함수 - 별도 export
+export const getFoodAutocomplete = async (query) => {
+  try {
+    console.log('Food autocomplete query:', query);
+    const response = await axios.get(`${API_BASE_URL}/pesticides/food_autocomplete/`, {
+      params: { query },
+    });
+    console.log('Food autocomplete response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Food autocomplete fetch error:', error);
+    return [];
+  }
+};
+
 export const api = {
   // 회원가입
   signup: async (userData) => {
@@ -30,21 +60,6 @@ export const api = {
       return response.data;
     } catch (error) {
       console.error('Signup error:', error);
-      throw error;
-    }
-  },
-
-  // 검색어 자동입력
-  getPesticideAutocomplete: async (query) => {
-    try {
-      console.log('Autocomplete query:', query);
-      const response = await axios.get(`${API_BASE_URL}/pesticides/autocomplete/`, {
-        params: { query },
-      });
-      console.log('Autocomplete response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Autocomplete fetch error:', error);
       throw error;
     }
   },

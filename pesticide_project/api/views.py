@@ -264,6 +264,24 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(results)
 
     @action(detail=False, methods=['GET'])
+    def food_autocomplete(self, request):
+        query = request.query_params.get('query', '').strip()
+
+        # 자동완성 로그 출력
+        if len(query) >= 1: # 한글만 입력해도 자동완성 시도
+            print(format_log_message('autocomplete', query=query))
+
+        if len(query) < 1:
+            return Response([])
+
+        # PesticideLimit 모델에서 food_name 필드를 검색하여 자동완성 결과 제공
+        results = PesticideLimit.objects.filter(
+            food_name__icontains=query
+        ).values_list('food_name', flat=True).distinct().order_by('food_name')[:10]
+
+        return Response(list(results))
+
+    @action(detail=False, methods=['GET'])
     def search_logs(self, request):
         """검색 로그를 조회하는 엔드포인트"""
         # 관리자만 접근 가능하도록 설정

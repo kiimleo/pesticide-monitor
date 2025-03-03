@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  TextField,
   Button,
   Grid,
   Paper,
@@ -11,6 +10,7 @@ import {
 } from '@mui/material';
 import { Clear as ClearIcon } from '@mui/icons-material';
 import PesticideAutocomplete from './PesticideAutocomplete';
+import FoodAutocomplete from './FoodAutocomplete';
 
 const FilterPanel = ({ onFilter, onReset }) => {
   const [food, setFood] = useState('');
@@ -26,7 +26,7 @@ const FilterPanel = ({ onFilter, onReset }) => {
   const handleFilterPanelReset = () => {
     setFood('');
     setPesticide('');  // 농약성분명 상태 초기화
-    document.getElementById('food-input').focus();
+    // document.getElementById('food-input').focus();
   };
 
   return (
@@ -34,15 +34,10 @@ const FilterPanel = ({ onFilter, onReset }) => {
       <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={5}>
-            <TextField
-              id="food-input"
-              fullWidth
-              label="식품명"
-              value={food}
-              onChange={(e) => setFood(e.target.value)}
-              placeholder="예: 사과"
-              required
-              helperText="검색할 식품명을 입력하세요"
+            <FoodAutocomplete
+              value={food}  // value prop 추가
+              onChange={(value) => setFood(value)} 
+              onSelect={(value) => setFood(value)}
             />
           </Grid>
 

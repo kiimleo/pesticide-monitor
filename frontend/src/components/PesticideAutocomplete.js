@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Autocomplete, TextField, CircularProgress } from '@mui/material';
 import { debounce } from 'lodash';
-import { API_BASE_URL, api } from '../services/api'; // API_BASE_URL과 api 가져오기
+import { API_BASE_URL, getPesticideAutocomplete } from '../services/api'; // API_BASE_URL과 getPesticideAutocomplete 가져오기
 
 
 const PesticideAutocomplete = ({ value, onChange, onReset }) => {
@@ -32,7 +32,7 @@ const PesticideAutocomplete = ({ value, onChange, onReset }) => {
         console.log('Autocomplete full URL:', `${API_BASE_URL}/api/pesticides/autocomplete/?query=${query}`);
   
         // API 호출
-        const response = await api.getPesticideAutocomplete(query);
+        const response = await getPesticideAutocomplete(query);
   
         // 응답 데이터 설정
         console.log('Autocomplete response:', response);
