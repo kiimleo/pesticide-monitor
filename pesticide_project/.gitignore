@@ -45,3 +45,24 @@ pesticide_project/api/tests.py
 Dockerfile.local
 docker-compose*.yml
 .docker/
+
+# Database backups
+backups/pesticide_db_*.sql
+
+# Node/Frontend
+env-cmd
+frontend@0.1.0
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent

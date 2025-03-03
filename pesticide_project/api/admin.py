@@ -4,10 +4,12 @@ from .models import PesticideLimit, LimitConditionCode, SearchLog
 
 @admin.register(SearchLog)
 class SearchLogAdmin(admin.ModelAdmin):
-    list_display = ('search_term', 'pesticide_term', 'food_term', 'results_count', 'timestamp', 'ip_address')
+    list_display = ('timestamp', 'ip_address', 'pesticide_term', 'food_term', 'results_count')
     list_filter = ('timestamp', 'results_count')
-    search_fields = ('search_term', 'pesticide_term', 'food_term')
-    date_hierarchy = 'timestamp'
+    search_fields = ('search_term', 'pesticide_term', 'food_term', 'ip_address')
+    readonly_fields = ('timestamp', 'ip_address', 'user_agent')
+    ordering = ('-timestamp',)
+    date_hierarchy = 'timestamp'  # 날짜 기반 네비게이션 추가
 
 @admin.register(PesticideLimit)
 class PesticideLimitAdmin(admin.ModelAdmin):
