@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 from .models import LimitConditionCode, PesticideLimit, User
+from .models import CertificateOfAnalysis, PesticideResult
 
 class LimitConditionCodeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,3 +46,17 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+
+class PesticideResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PesticideResult
+        fields = '__all__'
+
+
+class CertificateOfAnalysisSerializer(serializers.ModelSerializer):
+    pesticide_results = PesticideResultSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CertificateOfAnalysis
+        fields = '__all__'

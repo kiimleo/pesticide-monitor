@@ -11,6 +11,8 @@ from api.views import (
    health_check
 )
 from django.conf import settings
+from api import certificate_parser
+
 
 # Debug Toolbar import 추가
 if settings.DEBUG:
@@ -31,6 +33,7 @@ urlpatterns = [
     path('api/admin/', admin.site.urls),
     path('api/', include(router.urls)),  # API 라우터 포함
     path('', index, name='index'),
+    path('api/certificates/upload/', certificate_parser.upload_certificate, name='upload-certificate'),
 ]
 
 # DEBUG 모드에서만 Debug Toolbar 추가
