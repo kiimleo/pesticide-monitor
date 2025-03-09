@@ -50,6 +50,20 @@ export const getFoodAutocomplete = async (query) => {
   }
 };
 
+// 검정증명서 PDF 업로드 및 분석
+export const uploadCertificate = async (formData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/certificates/upload/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Certificate upload error:', error);
+    throw error;
+  }
+};
+
+
 export const api = {
   // 회원가입
   signup: async (userData) => {
@@ -60,6 +74,19 @@ export const api = {
       return response.data;
     } catch (error) {
       console.error('Signup error:', error);
+      throw error;
+    }
+  },
+
+  // uploadCertificate 함수 여기에 추가
+  uploadCertificate: async (formData) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/certificates/upload/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Certificate upload error:', error);
       throw error;
     }
   },

@@ -1,14 +1,49 @@
 // path of this code: frontend/src/App.js
 
-import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import SignupForm from './components/SignupForm';
 import React, { useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Paper, Tabs, Tab } from '@mui/material';
 import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
 import SearchStatistics from './components/SearchStatistics';
 import PesticideImage from './components/PesticideImage';
+import CertificateAnalysisPage from './components/CertificateAnalysisPage'; // 새로 추가할 컴포넌트
+
+// 탭 네비게이션 컴포넌트
+const NavigationTabs = () => {
+  const location = useLocation();
+  const [value, setValue] = useState(
+    location.pathname === '/certificate-analysis' ? 1 : 0
+  );
+
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+  };
+
+  return (
+    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Tabs 
+        value={value} 
+        onChange={handleChange} 
+        aria-label="main navigation tabs"
+        centered
+      >
+        <Tab 
+          label="농약 잔류허용기준 검색" 
+          component={Link} 
+          to="/" 
+        />
+        <Tab 
+          label="검정증명서 분석" 
+          component={Link} 
+          to="/certificate-analysis" 
+        />
+      </Tabs>
+    </Box>
+  );
+};
 
 function MainContent() {
   const [pesticides, setPesticides] = useState([]);
@@ -154,19 +189,32 @@ function AdminRedirect() {
   return null;
 }
 
+// 메인 App 컴포넌트 수정
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<MainContent />} />
-        <Route path="/signup" element={<SignupForm />} />
-        <Route path="/statistics" element={<SearchStatistics />} />
-        <Route path="/pesticide-image" element={<PesticideImage />} />
-        <Route path="/admin/*" element={<AdminRedirect />} />
-      </Routes>
+      <Container maxWidth="lg">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <NavigationTabs />
+              <MainContent />
+            </>
+          } />
+          <Route path="/certificate-analysis" element={
+            <>
+              <NavigationTabs />
+              <CertificateAnalysisPage />
+            </>
+          } />
+          <Route path="/signup" element={<SignupForm />} />
+          <Route path="/statistics" element={<SearchStatistics />} />
+          <Route path="/pesticide-image" element={<PesticideImage />} />
+          <Route path="/admin/*" element={<AdminRedirect />} />
+        </Routes>
+      </Container>
     </Router>
   );
 }
-
 
 export default App;

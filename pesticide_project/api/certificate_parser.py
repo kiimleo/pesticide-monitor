@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
+from .models import PesticideLimit
 import PyPDF2
 import re
 import logging
@@ -28,6 +29,10 @@ def upload_certificate(request):
 
     pdf_file = request.FILES['file']
 
+    # 덮어쓰기 옵션 확인
+    overwrite = request.data.get('overwrite', 'false').lower() == 'true'
+    logger.info(f"덮어쓰기 옵션: {overwrite}")
+
     # PDF 파일 형식 검증
     if not pdf_file.name.endswith('.pdf'):
         return Response({'error': 'PDF 파일만 업로드 가능합니다.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -39,18 +44,67 @@ def upload_certificate(request):
         if not parsing_result:
             return Response({'error': 'PDF 파싱에 실패했습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 이미 존재하는 증명서인지 확인
+        certificate_number = parsing_result.get('certificate_number')
+        existing_certificate = CertificateOfAnalysis.objects.filter(certificate_number=certificate_number).first()
+
+        if existing_certificate and not overwrite:
+            # 덮어쓰기 옵션이 없으면 기존 증명서 반환
+            logger.info(f"기존 증명서 반환: {certificate_number} (덮어쓰기 없음)")
+            verification_result = list(existing_certificate.pesticide_results.all().values())
+            return Response({
+                'message': '이미 업로드된 검정증명서입니다.',
+                'parsing_result': CertificateOfAnalysisSerializer(existing_certificate).data,
+                'verification_result': verification_result,
+                'saved_data': {
+                    'certificate_id': existing_certificate.id,
+                    'certificate_number': existing_certificate.certificate_number,
+                    'sample_description': existing_certificate.sample_description,
+                    'pesticide_count': existing_certificate.pesticide_results.count()
+                }
+            }, status=status.HTTP_200_OK)
+        elif existing_certificate and overwrite:
+            # 덮어쓰기 옵션이 있으면 기존 증명서 삭제
+            logger.info(f"기존 증명서 삭제: {certificate_number} (덮어쓰기)")
+
+            # 기존 파일 경로 가져오기
+            old_file_path = existing_certificate.original_file.path if existing_certificate.original_file else None
+
+            # 기존 증명서 및 관련된 농약 검출 결과 삭제
+            existing_certificate.delete()
+
+            # 파일 시스템에서 파일 삭제 (필요한 경우)
+            if old_file_path and os.path.exists(old_file_path):
+                try:
+                    os.remove(old_file_path)
+                    logger.info(f"기존 파일 삭제 성공: {old_file_path}")
+                except Exception as e:
+                    logger.warning(f"기존 파일 삭제 실패: {old_file_path}, 오류: {str(e)}")
+
         # 검증 수행
         verification_result = verify_pesticide_results(parsing_result)
+
+        # 검증 결과 로깅
+        logger.info(
+            f"{'새 증명서' if not existing_certificate or overwrite else '기존 증명서'} 검증 완료: {certificate_number}, 결과 수: {len(verification_result)}")
+        logger.info(f"검증 결과 샘플: {verification_result[:1] if verification_result else '없음'}")
 
         # 결과 저장
         saved_data = save_certificate_data(parsing_result, verification_result, pdf_file)
 
-        return Response({
+        response_data = {
             'message': '검정증명서가 성공적으로 업로드되었습니다.',
             'parsing_result': parsing_result,
             'verification_result': verification_result,
             'saved_data': saved_data
-        }, status=status.HTTP_201_CREATED)
+        }
+
+        # 디버깅을 위한 응답 구조 로깅
+        logger.info(f"API 응답 구조: parsing_result 키 존재: {'parsing_result' in response_data}")
+        logger.info(f"API 응답 구조: verification_result 키 존재: {'verification_result' in response_data}")
+        logger.info(f"API 응답 구조: verification_result 항목 수: {len(verification_result)}")
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         logger.error(f"PDF 처리 중 오류 발생: {str(e)}")
@@ -73,7 +127,6 @@ def parse_certificate_pdf(pdf_file):
         certificate_number = extract_certificate_number(text)
         applicant_info = extract_applicant_info(text)
         test_info = extract_test_info(text)
-        test_dates = extract_test_dates(text)
         pesticide_results = extract_pesticide_results(text)
 
         result = {
@@ -82,14 +135,14 @@ def parse_certificate_pdf(pdf_file):
             'applicant_id_number': applicant_info.get('id_number'),
             'applicant_address': applicant_info.get('address'),
             'applicant_tel': applicant_info.get('tel'),
-            'analytical_purpose': test_info.get('purpose'),
-            'sample_description': test_info.get('sample'),
-            'producer_info': test_info.get('producer'),
-            'analyzed_items': test_info.get('items'),
-            'sample_quantity': test_info.get('quantity'),
-            'test_start_date': test_dates.get('start_date'),
-            'test_end_date': test_dates.get('end_date'),
-            'analytical_method': test_info.get('method'),
+            'analytical_purpose': test_info.get('analytical_purpose'),
+            'sample_description': test_info.get('sample_description'),
+            'producer_info': test_info.get('producer_info'),
+            'analyzed_items': test_info.get('analyzed_items'),
+            'sample_quantity': test_info.get('sample_quantity'),
+            'test_start_date': test_info.get('test_start_date'),  # 직접 test_info에서 가져옴
+            'test_end_date': test_info.get('test_end_date'),  # 직접 test_info에서 가져옴
+            'analytical_method': test_info.get('analytical_method'),
             'pesticide_results': pesticide_results
         }
 
@@ -129,6 +182,8 @@ def extract_applicant_info(text):
     id_match = re.search(id_pattern, text)
     if id_match:
         info['id_number'] = id_match.group(1).strip()
+    else:
+        info['id_number'] = "미상"  # 기본값 제공
 
     address_match = re.search(address_pattern, text)
     if address_match:
@@ -137,137 +192,316 @@ def extract_applicant_info(text):
     tel_match = re.search(tel_pattern, text)
     if tel_match:
         info['tel'] = tel_match.group(1).strip()
+    else:
+        info['tel'] = "미제공"  # 기본값 설정
 
     return info
 
 
 def extract_test_info(text):
     """
-    텍스트에서 검정 정보 추출
+    검정증명서 PDF에서 추출한 텍스트에서 필요한 정보를 추출
     """
-    purpose_pattern = r'검정 목적.*?([^\n]+)'
-    sample_pattern = r'검정 품목.*?([^\n]+)'
-    producer_pattern = r'성명/수거지:\s*([^\n]+)'
-    items_pattern = r'검정 항목.*?([^\n]+)'
-    quantity_pattern = r'시료 점수 및 중량.*?([^\n]+)'
-    method_pattern = r'검정 방법.*?([^\n]+)'
+    logger.info(f"텍스트 추출 시작: 길이 {len(text)} 글자")
 
-    info = {}
+    # 정확한 패턴 정의
+    patterns = {
+        'certificate_number': r'제\s+(\d{4}-\d{5})\s+호|제\s+(\d{4}-\d{5})|Certificate\s+Number[:：]?\s*(\d{4}-\d{5})',
+        'analytical_purpose': r'검정\s+목적[^가-힣\s]*\s*([^\n\r]+)|Analytical\s+Purpose[^A-Za-z\s]*\s*([^\n\r]+)',
+        'sample_description': r'검정\s+품목[^가-힣\s]*\s*([^\n\r]+)|Sample\s+Description[^A-Za-z\s]*\s*([^\n\r]+)',
+        'producer_info': r'성명/수거지[^가-힣\s]*\s*([^\n\r]+)',
+        'analyzed_items': r'검정\s+항목[^가-힣\s]*\s*([^\n\r]+)|Analyzed\s+Items[^A-Za-z\s]*\s*([^\n\r]+)',
+        'sample_quantity': r'시료\s+점수\s+및\s+중량[^가-힣\s]*\s*([^\n\r]+)|Quantity\s+of\s+Samples[^A-Za-z\s]*\s*([^\n\r]+)',
+        'test_period': r'검정\s+기간[^가-힣\s]*\s*([^\n\r]+)|Date\s+of\s+Test[^A-Za-z\s]*\s*([^\n\r]+)',
+        'analytical_method': r'검정\s+방법[^가-힣\s]*\s*([^\n\r]+)|Analytical\s+Method\s+used[^A-Za-z\s]*\s*([^\n\r]+)'
+    }
 
-    purpose_match = re.search(purpose_pattern, text)
-    if purpose_match:
-        info['purpose'] = purpose_match.group(1).strip()
+    results = {}
 
-    sample_match = re.search(sample_pattern, text)
-    if sample_match:
-        info['sample'] = sample_match.group(1).strip()
+    # 각 필드의 정규식 패턴으로 정보 추출
+    for field, pattern in patterns.items():
+        match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if match:
+            # 첫 번째 매칭 그룹이 없으면 두 번째 그룹 사용 (영문/한글 대응)
+            value = next((g for g in match.groups() if g), None)
+            if value:
+                # 괄호로 둘러싸인 레이블 제거 (예: "(Sample Description)모과" -> "모과")
+                cleaned_value = re.sub(r'\([^)]*\)', '', value).strip()
+                results[field] = cleaned_value
+                logger.info(f"'{field}' 추출 성공: {results[field]}")
+            else:
+                logger.warning(f"'{field}' 패턴은 매칭됐지만 값이 없음")
+        else:
+            logger.warning(f"'{field}' 패턴 매칭 실패")
 
-    producer_match = re.search(producer_pattern, text)
-    if producer_match:
-        info['producer'] = producer_match.group(1).strip()
+    # 검정 기간에서 시작일/종료일 분리
+    if 'test_period' in results:
+        dates_match = re.search(r'(\d{4}\.\d{2}\.\d{2}\.?)\s*~\s*(\d{4}\.\d{2}\.\d{2}\.?)', results['test_period'])
+        if dates_match:
+            results['test_start_date'] = dates_match.group(1).replace('.', '-').rstrip('-')
+            results['test_end_date'] = dates_match.group(2).replace('.', '-').rstrip('-')
+            logger.info(f"검정 기간 분리: 시작일={results['test_start_date']}, 종료일={results['test_end_date']}")
 
-    items_match = re.search(items_pattern, text)
-    if items_match:
-        info['items'] = items_match.group(1).strip()
+    # 결과 매핑
+    result = {
+        'certificate_number': results.get('certificate_number'),
+        'analytical_purpose': results.get('analytical_purpose'),
+        'sample_description': results.get('sample_description'),
+        'producer_info': results.get('producer_info'),
+        'analyzed_items': results.get('analyzed_items'),
+        'sample_quantity': results.get('sample_quantity'),
+        'test_start_date': results.get('test_start_date'),
+        'test_end_date': results.get('test_end_date'),
+        'analytical_method': results.get('analytical_method')
+    }
 
-    quantity_match = re.search(quantity_pattern, text)
-    if quantity_match:
-        info['quantity'] = quantity_match.group(1).strip()
+    # 결과 로깅
+    for key, value in result.items():
+        if value:
+            logger.info(f"최종 '{key}': {value}")
+        else:
+            logger.warning(f"최종 '{key}': 값 없음")
 
-    method_match = re.search(method_pattern, text)
-    if method_match:
-        info['method'] = method_match.group(1).strip()
-
-    return info
-
-
-def extract_test_dates(text):
-    """
-    텍스트에서 검정 기간 추출
-    """
-    dates_pattern = r'검정 기간.*?(\d{4}\.\d{2}\.\d{2}\.)\s*~\s*(\d{4}\.\d{2}\.\d{2}\.)'
-    dates_match = re.search(dates_pattern, text)
-
-    dates = {}
-    if dates_match:
-        start_date_str = dates_match.group(1).strip()
-        end_date_str = dates_match.group(2).strip()
-
-        # 날짜 형식 변환 (2024.11.14. -> 2024-11-14)
-        start_date = start_date_str.replace('.', '-').strip('-')
-        end_date = end_date_str.replace('.', '-').strip('-')
-
-        dates['start_date'] = start_date
-        dates['end_date'] = end_date
-
-    return dates
+    return result
 
 
 def extract_pesticide_results(text):
     """
-    텍스트에서 농약 검출 결과 추출
+    텍스트에서 농약 검출 결과 추출 - 검정증명서 형식에 최적화
     """
-    # 결과 섹션 추출
-    results_section_pattern = r'검정\s+결과.*?결과.*?검출량.*?잔류허용기준.*?\n(.*?)※'
-    results_section_match = re.search(results_section_pattern, text, re.DOTALL)
+    logger.info("농약 검출 결과 추출 시작")
 
-    if not results_section_match:
-        return []
+    # 결과 테이블 패턴 - 여러 형식에 대응
+    table_patterns = [
+        r'결과\s*검출량.*?잔류허용기준.*?\n(.*?)※',
+        r'Results\s*검출량.*?MRL.*?\n(.*?)※',
+        r'결과.*?\(Results\).*?검출량.*?잔류허용기준.*?\n(.*?)※'
+    ]
 
-    results_text = results_section_match.group(1).strip()
+    results_text = None
+    for pattern in table_patterns:
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            results_text = match.group(1).strip()
+            logger.info(f"결과 테이블 매칭 성공: 길이 {len(results_text)} 글자")
+            break
 
-    # 개별 결과 추출
+    if not results_text:
+        logger.warning("결과 테이블 매칭 실패, 전체 텍스트에서 농약 결과 검색")
+        # 전체 텍스트에서 농약명, 검출량, MRL, 결과 패턴 검색
+        results = []
+        pesticide_pattern = r'([A-Za-z]\w+)\s+([\d.]+)\s+([\d.]+|[가-힣]+\s+[\d.]+[A-Za-z]?)\s+[-–—]\s+(적합|부적합|—)'
+
+        for match in re.finditer(pesticide_pattern, text):
+            pesticide_name = match.group(1).strip()
+            detection_value = match.group(2).strip()
+            korea_mrl = match.group(3).strip()
+            result_opinion = match.group(4).strip()
+
+            # MRL 값에서 숫자만 추출
+            mrl_value_match = re.search(r'([\d.]+)', korea_mrl)
+            if mrl_value_match:
+                korea_mrl = mrl_value_match.group(1).strip()
+
+            logger.info(f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL: {korea_mrl}, 결과: {result_opinion}")
+
+            results.append({
+                'pesticide_name': pesticide_name,
+                'detection_value': detection_value,
+                'korea_mrl': korea_mrl,
+                'export_country': None,
+                'export_mrl': None,
+                'result_opinion': result_opinion if result_opinion != '—' else '적합'
+            })
+
+        return results
+
+    # 결과 테이블에서 각 행 추출
     results = []
+    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]+?)\s+([^\n\r]*?)\s+(적합|부적합|—)'
 
-    # 패턴: 농약명, 검출량, 한국MRL, (수출국MRL), 검토의견
-    result_pattern = r'([A-Za-z]+)\s+([\d.]+)\s+([\d.]+)\s+-\s+(적합|부적합)'
-
-    for match in re.finditer(result_pattern, results_text):
+    for match in re.finditer(row_pattern, results_text):
         pesticide_name = match.group(1).strip()
         detection_value = match.group(2).strip()
-        korea_mrl = match.group(3).strip()
-        result_opinion = match.group(4).strip()
+        korea_mrl_raw = match.group(3).strip()
+        export_info = match.group(4).strip()
+        result_opinion = match.group(5).strip()
+
+        # MRL 값에서 숫자만 추출
+        mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
+        korea_mrl = mrl_value_match.group(1) if mrl_value_match else None
+
+        # 수출국 정보가 있는 경우 분리
+        export_country = None
+        export_mrl = None
+        if export_info:
+            export_parts = export_info.split()
+            if len(export_parts) > 1:
+                export_country = export_parts[0]
+                export_mrl_match = re.search(r'([\d.]+)', export_parts[-1])
+                if export_mrl_match:
+                    export_mrl = export_mrl_match.group(1)
+
+        logger.info(f"추출된 농약 결과: {pesticide_name}, 검출량: {detection_value}, 한국 MRL: {korea_mrl}, 결과: {result_opinion}")
 
         results.append({
             'pesticide_name': pesticide_name,
             'detection_value': detection_value,
             'korea_mrl': korea_mrl,
-            'export_country': None,  # 이 샘플에는 수출국 정보가 없음
-            'export_mrl': None,  # 이 샘플에는 수출국 MRL 정보가 없음
-            'result_opinion': result_opinion
+            'export_country': export_country,
+            'export_mrl': export_mrl,
+            'result_opinion': result_opinion if result_opinion != '—' else '적합'
         })
 
+    logger.info(f"추출된 농약 결과 수: {len(results)}")
     return results
 
 
 def verify_pesticide_results(parsing_result):
     """
-    파싱된 농약 검출 결과 검증
+    파싱된 농약 검출 결과 검증 - 수정
     """
     if not parsing_result or 'pesticide_results' not in parsing_result:
         return []
 
     verification_results = []
+    sample_description = parsing_result.get('sample_description', '')
+
+    # 로그 추가
+    logger.info(f"검정 품목: {sample_description}")
 
     for result in parsing_result['pesticide_results']:
+        pesticide_name = result['pesticide_name']
         detection_value = decimal.Decimal(result['detection_value'])
-        korea_mrl = decimal.Decimal(result['korea_mrl'])
 
-        # 적합/부적합 계산 - 한국 MRL 기준
-        calculated_result = '적합' if detection_value <= korea_mrl else '부적합'
+        # PDF에서 추출한 MRL 값
+        pdf_korea_mrl = decimal.Decimal(result['korea_mrl']) if result['korea_mrl'] else None
+
+        # 데이터베이스에서 정보 조회
+        db_pesticide_info = None
+        standard_pesticide_name = None
+        db_korea_mrl = None
+        pesticide_name_match = False
+
+        try:
+            # 1. 농약성분명으로 표준명 찾기
+            pesticide_info = PesticideLimit.objects.filter(
+                pesticide_name_en__iexact=pesticide_name
+            ).first()
+
+            if pesticide_info:
+                standard_pesticide_name = pesticide_info.pesticide_name_en
+                pesticide_name_match = pesticide_name.lower() == standard_pesticide_name.lower()
+                logger.info(f"농약성분명 찾음: {pesticide_name} → {standard_pesticide_name}")
+
+                # 2. 검정 품목을 기반으로 잔류허용기준 찾기
+                if sample_description:
+                    # 직접 매칭 시도
+                    direct_match = PesticideLimit.objects.filter(
+                        pesticide_name_en__iexact=standard_pesticide_name,
+                        food_name__iexact=sample_description
+                    ).first()
+
+                    if direct_match:
+                        db_korea_mrl = direct_match.max_residue_limit
+                        logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
+                    else:
+                        # 카테고리 매칭 시도 (내부 API 호출)
+                        try:
+                            from api.views import PesticideLimitViewSet
+                            # 내부적으로 API 호출하는 것과 유사한 로직 구현
+                            viewset = PesticideLimitViewSet()
+                            viewset.request = type('obj', (object,), {
+                                'query_params': {'pesticide': standard_pesticide_name, 'food': sample_description}
+                            })
+
+                            # 검색 API 호출
+                            response = viewset.list(viewset.request)
+
+                            if response.status_code == 200:
+                                limits_data = response.data
+                                if limits_data and len(limits_data) > 0:
+                                    # 첫 번째 결과 사용
+                                    db_korea_mrl = decimal.Decimal(limits_data[0].get('max_residue_limit', 0))
+                                    logger.info(
+                                        f"API 검색 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
+                        except Exception as api_error:
+                            logger.error(f"내부 API 호출 오류: {str(api_error)}")
+
+                        # 카테고리 매칭이 실패하면 PDF에서 추출한 값 사용
+                        if db_korea_mrl is None and pdf_korea_mrl is not None:
+                            db_korea_mrl = pdf_korea_mrl
+                            logger.info(f"카테고리 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+            else:
+                # 유사한 이름 검색 (첫 4글자로 유사 검색)
+                similar_pesticides = PesticideLimit.objects.filter(
+                    pesticide_name_en__icontains=pesticide_name[:4]
+                ).values('pesticide_name_en', 'pesticide_name_kr').distinct()
+
+                if similar_pesticides.exists():
+                    standard_pesticide_name = similar_pesticides.first()['pesticide_name_en']
+                    pesticide_name_match = pesticide_name.lower() == standard_pesticide_name.lower()
+                    logger.info(f"유사 농약성분명: {pesticide_name} → {standard_pesticide_name}")
+
+                    # 유사한 농약성분에 대한 MRL 값 조회
+                    if sample_description:
+                        similar_limit = PesticideLimit.objects.filter(
+                            pesticide_name_en__iexact=standard_pesticide_name,
+                            food_name__icontains=sample_description
+                        ).first()
+
+                        if similar_limit:
+                            db_korea_mrl = similar_limit.max_residue_limit
+                            logger.info(f"유사 농약 MRL 값: {db_korea_mrl}")
+                        elif pdf_korea_mrl is not None:
+                            # 유사 매칭 실패 시 PDF에서 추출한 값 사용
+                            db_korea_mrl = pdf_korea_mrl
+                            logger.info(f"유사 농약 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+                else:
+                    standard_pesticide_name = pesticide_name
+                    pesticide_name_match = False
+
+                    # 매칭 실패 시 PDF에서 추출한 값 사용
+                    if pdf_korea_mrl is not None:
+                        db_korea_mrl = pdf_korea_mrl
+                        logger.info(f"매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+        except Exception as e:
+            logger.error(f"검증 중 DB 조회 오류: {str(e)}")
+            standard_pesticide_name = pesticide_name
+            pesticide_name_match = False
+
+            # 오류 발생 시에도 PDF 값 사용
+            if pdf_korea_mrl is not None:
+                db_korea_mrl = pdf_korea_mrl
+                logger.info(f"오류 발생, PDF 값 사용: {pdf_korea_mrl}")
+
+        # PDF MRL로 적합/부적합 계산
+        pdf_calculated_result = '적합' if detection_value <= pdf_korea_mrl else '부적합'
+
+        # DB MRL로 적합/부적합 계산
+        if db_korea_mrl is not None:
+            db_calculated_result = '적합' if detection_value <= db_korea_mrl else '부적합'
+        else:
+            # 최후의 수단으로 PDF에서 추출한 값 사용
+            db_korea_mrl = pdf_korea_mrl
+            db_calculated_result = pdf_calculated_result if pdf_korea_mrl is not None else '확인불가'
 
         # PDF의 검토의견과 계산된 결과 비교
-        is_consistent = (calculated_result == result['result_opinion'])
+        is_pdf_consistent = (pdf_calculated_result == result['result_opinion'])
 
         verification_results.append({
-            'pesticide_name': result['pesticide_name'],
+            'pesticide_name': pesticide_name,
+            'standard_pesticide_name': standard_pesticide_name,
+            'pesticide_name_match': pesticide_name_match,
             'detection_value': detection_value,
-            'korea_mrl': korea_mrl,
-            'export_country': result['export_country'],
-            'export_mrl': result['export_mrl'],
+            'pdf_korea_mrl': pdf_korea_mrl,
+            'db_korea_mrl': db_korea_mrl,
+            'export_country': result.get('export_country'),
+            'export_mrl': result.get('export_mrl'),
             'pdf_result': result['result_opinion'],
-            'calculated_result': calculated_result,
-            'is_consistent': is_consistent
+            'pdf_calculated_result': pdf_calculated_result,
+            'db_calculated_result': db_calculated_result,
+            'is_pdf_consistent': is_pdf_consistent
         })
 
     return verification_results
@@ -278,37 +512,55 @@ def save_certificate_data(parsing_result, verification_result, pdf_file):
     파싱 및 검증 결과를 데이터베이스에 저장
     """
     try:
+        # 파일 정보 로깅 추가
+        logger.info(f"Saving file: {pdf_file.name}, Size: {pdf_file.size} bytes")
+
+        # 저장 전 파일 경로 확인
+        from django.conf import settings
+        import os
+        expected_path = os.path.join(settings.MEDIA_ROOT, 'certificates', os.path.basename(pdf_file.name))
+        logger.info(f"Expected file path: {expected_path}")
+
         # 검정증명서 정보 저장
         certificate = CertificateOfAnalysis(
-            certificate_number=parsing_result['certificate_number'],
-            applicant_name=parsing_result['applicant_name'],
-            applicant_id_number=parsing_result['applicant_id_number'],
-            applicant_address=parsing_result['applicant_address'],
-            applicant_tel=parsing_result['applicant_tel'],
-            analytical_purpose=parsing_result['analytical_purpose'],
-            sample_description=parsing_result['sample_description'],
-            producer_info=parsing_result['producer_info'],
-            analyzed_items=parsing_result['analyzed_items'],
-            sample_quantity=parsing_result['sample_quantity'],
-            test_start_date=parsing_result['test_start_date'],
-            test_end_date=parsing_result['test_end_date'],
-            analytical_method=parsing_result['analytical_method'],
+            certificate_number=parsing_result.get('certificate_number', '미상'),
+            applicant_name=parsing_result.get('applicant_name', '미상'),
+            applicant_id_number=parsing_result.get('applicant_id_number', '미상'),
+            applicant_address=parsing_result.get('applicant_address', '미상'),
+            applicant_tel=parsing_result.get('applicant_tel', '미상'),
+            analytical_purpose=parsing_result.get('analytical_purpose', '미상'),
+            sample_description=parsing_result.get('sample_description', '미상'),
+            producer_info=parsing_result.get('producer_info', '미상'),
+            analyzed_items=parsing_result.get('analyzed_items', '미상'),
+            sample_quantity=parsing_result.get('sample_quantity', '미상'),
+            test_start_date=parsing_result.get('test_start_date'),
+            test_end_date=parsing_result.get('test_end_date'),
+            analytical_method=parsing_result.get('analytical_method', '미상'),
             original_file=pdf_file
         )
         certificate.save()
+
+        # 저장 후 파일 경로 확인
+        actual_path = certificate.original_file.path
+        logger.info(f"Actual saved file path: {actual_path}")
+        logger.info(f"File exists: {os.path.exists(actual_path)}")
 
         # 농약 검출 결과 정보 저장
         for result in verification_result:
             pesticide_result = PesticideResult(
                 certificate=certificate,
                 pesticide_name=result['pesticide_name'],
+                standard_pesticide_name=result['standard_pesticide_name'],
+                pesticide_name_match=result['pesticide_name_match'],
                 detection_value=result['detection_value'],
-                korea_mrl=result['korea_mrl'],
+                pdf_korea_mrl=result['pdf_korea_mrl'],
+                db_korea_mrl=result['db_korea_mrl'],
                 export_country=result['export_country'],
                 export_mrl=result['export_mrl'],
                 pdf_result=result['pdf_result'],
-                calculated_result=result['calculated_result'],
-                is_consistent=result['is_consistent']
+                pdf_calculated_result=result['pdf_calculated_result'],
+                db_calculated_result=result['db_calculated_result'],
+                is_pdf_consistent=result['is_pdf_consistent']
             )
             pesticide_result.save()
 

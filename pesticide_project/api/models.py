@@ -151,21 +151,21 @@ class CertificateOfAnalysis(models.Model):
     """
     농약 검정증명서 모델 (Certificate of Analysis)
     """
-    certificate_number = models.CharField(max_length=50, unique=True, verbose_name='증명서번호')
-    applicant_name = models.CharField(max_length=100, verbose_name='신청인명/기관명')
-    applicant_id_number = models.CharField(max_length=50, verbose_name='법인등록번호')
-    applicant_address = models.TextField(verbose_name='주소')
-    applicant_tel = models.CharField(max_length=50, verbose_name='전화번호')
+    certificate_number = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name='증명서번호')
+    applicant_name = models.CharField(max_length=100, null=True, blank=True, verbose_name='신청인명/기관명')
+    applicant_id_number = models.CharField(max_length=50, null=True, blank=True, verbose_name='법인등록번호')
+    applicant_address = models.TextField(null=True, blank=True, verbose_name='주소')
+    applicant_tel = models.CharField(max_length=50, null=True, blank=True, verbose_name='전화번호')
 
-    analytical_purpose = models.CharField(max_length=100, verbose_name='검정목적')
-    sample_description = models.CharField(max_length=100, verbose_name='검정품목')
-    producer_info = models.CharField(max_length=200, verbose_name='생산자/수거지')
-    analyzed_items = models.CharField(max_length=200, verbose_name='검정항목')
-    sample_quantity = models.CharField(max_length=50, verbose_name='시료점수 및 중량')
+    analytical_purpose = models.CharField(max_length=100, null=True, blank=True, verbose_name='검정목적')
+    sample_description = models.CharField(max_length=100, null=True, blank=True, verbose_name='검정품목')
+    producer_info = models.CharField(max_length=200, null=True, blank=True, verbose_name='생산자/수거지')
+    analyzed_items = models.CharField(max_length=200, null=True, blank=True, verbose_name='검정항목')
+    sample_quantity = models.CharField(max_length=50, null=True, blank=True, verbose_name='시료점수 및 중량')
 
-    test_start_date = models.DateField(verbose_name='검정시작일')
-    test_end_date = models.DateField(verbose_name='검정종료일')
-    analytical_method = models.TextField(verbose_name='검정방법')
+    test_start_date = models.DateField(null=True, blank=True, verbose_name='검정시작일')
+    test_end_date = models.DateField(null=True, blank=True, verbose_name='검정종료일')
+    analytical_method = models.TextField(null=True, blank=True, verbose_name='검정방법')
 
     original_file = models.FileField(upload_to='certificates/', verbose_name='원본파일')
     upload_date = models.DateTimeField(default=timezone.now, verbose_name='업로드일시')
@@ -180,6 +180,7 @@ class CertificateOfAnalysis(models.Model):
         return f"{self.certificate_number} - {self.sample_description}"
 
 
+# models.py의 PesticideResult 모델 수정
 class PesticideResult(models.Model):
     """
     검정증명서 내 농약 검출 결과
@@ -191,15 +192,26 @@ class PesticideResult(models.Model):
         verbose_name='검정증명서'
     )
     pesticide_name = models.CharField(max_length=100, verbose_name='농약성분명')
+    standard_pesticide_name = models.CharField(max_length=100, null=True, blank=True, verbose_name='표준 농약성분명')
+    pesticide_name_match = models.BooleanField(default=True, verbose_name='농약성분명 일치여부')
     detection_value = models.DecimalField(max_digits=10, decimal_places=3, verbose_name='검출량(mg/kg)')
 
-    # 한국 잔류허용기준
-    korea_mrl = models.DecimalField(
+    # PDF에 표시된 잔류허용기준
+    pdf_korea_mrl = models.DecimalField(
         max_digits=10,
         decimal_places=3,
         null=True,
         blank=True,
-        verbose_name='한국 잔류허용기준(mg/kg)'
+        verbose_name='PDF 잔류허용기준(mg/kg)'
+    )
+
+    # DB에 저장된 잔류허용기준
+    db_korea_mrl = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        verbose_name='DB 잔류허용기준(mg/kg)'
     )
 
     # 수출국 잔류허용기준 (있을 경우)
@@ -220,19 +232,28 @@ class PesticideResult(models.Model):
     # PDF에 명시된 검토의견
     pdf_result = models.CharField(
         max_length=20,
-        verbose_name='원본 검토의견'
+        verbose_name='PDF 검토의견'
     )
 
-    # 시스템 계산 검토의견
-    calculated_result = models.CharField(
+    # PDF 기준으로 계산된 검토의견
+    pdf_calculated_result = models.CharField(
         max_length=20,
-        verbose_name='계산된 검토의견'
+        default='적합',
+        verbose_name='PDF 기준 계산 결과'
     )
 
-    # 원본과 계산값 일치 여부
-    is_consistent = models.BooleanField(
+    # DB 기준으로 계산된 검토의견
+    db_calculated_result = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        verbose_name='DB 기준 계산 결과'
+    )
+
+    # PDF 의견과 PDF 기준 계산 결과의 일치 여부
+    is_pdf_consistent = models.BooleanField(
         default=True,
-        verbose_name='검토의견 일치여부'
+        verbose_name='PDF 검토의견 일치여부'
     )
 
     class Meta:
