@@ -353,12 +353,6 @@ const VerificationSummary = ({ resultsConsistency, inconsistentResultsCount }) =
             일부 검토의견 불일치가 발견되었습니다. ({inconsistentResultsCount}건)
           </Alert>
         )}
-        
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <Button variant="contained">
-            결과 리포트 다운로드
-          </Button>
-        </Box>
       </CardContent>
     </Card>
   );
@@ -495,8 +489,8 @@ const CertificateAnalysisPage = () => {
           
           {/* 종합 평가 및 요약 */}
           <VerificationSummary 
-            resultsConsistency={verificationResults.every(r => r.is_consistent)}
-            inconsistentResultsCount={verificationResults.filter(r => !r.is_consistent).length}
+            resultsConsistency={verificationResults.every(r => r.is_pdf_consistent)}
+            inconsistentResultsCount={verificationResults.filter(r => !r.is_pdf_consistent).length}
           />
         </>
       )}
