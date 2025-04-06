@@ -343,11 +343,23 @@ def verify_pesticide_results(parsing_result):
     """
     파싱된 농약 검출 결과 검증 - 수정
     """
+
     if not parsing_result or 'pesticide_results' not in parsing_result:
         return []
 
+    # 품목명 매핑 사전 - 검정증명서 품목명 -> DB 품목명
+    FOOD_NAME_MAPPING = {
+        '깻잎': '들깻잎',
+        # 다른 매핑 추가 가능
+    }
+
     verification_results = []
     sample_description = parsing_result.get('sample_description', '')
+    mapped_sample_description = FOOD_NAME_MAPPING.get(sample_description, sample_description)
+
+    # 로그 추가
+    if sample_description != mapped_sample_description:
+        logger.info(f"품목명 매핑: '{sample_description}' → '{mapped_sample_description}'")
 
     # 로그 추가
     logger.info(f"검정 품목: {sample_description}")
@@ -381,12 +393,15 @@ def verify_pesticide_results(parsing_result):
                     # 직접 매칭 시도
                     direct_match = PesticideLimit.objects.filter(
                         pesticide_name_en__iexact=standard_pesticide_name,
-                        food_name__iexact=sample_description
+                        food_name__iexact = mapped_sample_description  # 매핑된 이름 사용
                     ).first()
 
                     # 기존 내부 API 호출 방식 부분을 제거하고 직접 API 호출 방식으로 변경
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
+                        # 여기에 db_korea_mrl_display 설정 코드 추가
+                        formatted_value = f"{db_korea_mrl:.1f}"
+                        db_korea_mrl_display = formatted_value
                         logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
                     # 직접 매칭이 없는 경우에만 API를 호출하여 값을 가져옴
                     if not direct_match:
@@ -400,7 +415,7 @@ def verify_pesticide_results(parsing_result):
                             port = '8000'  # Django 서버 포트
 
                             # API 엔드포인트 URL 구성
-                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={sample_description}"
+                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={mapped_sample_description}"  # 매핑된 이름 사용
 
                             # API 호출
                             response = requests.get(api_url)

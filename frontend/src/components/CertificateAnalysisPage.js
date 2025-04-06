@@ -318,7 +318,9 @@ const PesticideResultsVerification = ({ results }) => {
                     </TableCell>
                     {/* DB 잔류허용기준 표시 부분 */}
                     <TableCell align="right">
-                      {result.db_korea_mrl ? parseFloat(result.db_korea_mrl).toFixed(1) : '-'}
+                      {result.db_korea_mrl_display ? 
+                        result.db_korea_mrl_display : 
+                        (result.db_korea_mrl ? parseFloat(result.db_korea_mrl).toFixed(1) : '-')}
                     </TableCell>
                     {/* 검토의견이 비어있는 경우 PDF 판정은 '-'로 표시 */}
                     <TableCell align="center">
