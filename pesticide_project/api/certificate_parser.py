@@ -84,6 +84,10 @@ def upload_certificate(request):
         # 검증 수행
         verification_result = verify_pesticide_results(parsing_result)
 
+        # just for debugging
+        logger.info(f"파싱 결과의 pesticide_results 키 존재: {'pesticide_results' in parsing_result}")
+        logger.info(f"파싱 결과의 pesticide_results 항목 수: {len(parsing_result.get('pesticide_results', []))}")
+
         # 검증 결과 로깅
         logger.info(
             f"{'새 증명서' if not existing_certificate or overwrite else '기존 증명서'} 검증 완료: {certificate_number}, 결과 수: {len(verification_result)}")
@@ -128,6 +132,8 @@ def parse_certificate_pdf(pdf_file):
         applicant_info = extract_applicant_info(text)
         test_info = extract_test_info(text)
         pesticide_results = extract_pesticide_results(text)
+
+        logger.info(f"추출된 pesticide_results: {pesticide_results}")
 
         result = {
             'certificate_number': certificate_number,
@@ -265,6 +271,7 @@ def extract_test_info(text):
     return result
 
 
+# certificate_parser.py 파일의 extract_pesticide_results 함수 수정
 def extract_pesticide_results(text):
     """
     텍스트에서 농약 검출 결과 추출 - 검정증명서 형식에 최적화
@@ -284,74 +291,49 @@ def extract_pesticide_results(text):
         if match:
             results_text = match.group(1).strip()
             logger.info(f"결과 테이블 매칭 성공: 길이 {len(results_text)} 글자")
+            logger.info(f"결과 테이블 내용: {results_text}")
             break
 
     if not results_text:
         logger.warning("결과 테이블 매칭 실패, 전체 텍스트에서 농약 결과 검색")
-        # 전체 텍스트에서 농약명, 검출량, MRL, 결과 패턴 검색
-        results = []
-        pesticide_pattern = r'([A-Za-z]\w+)\s+([\d.]+)\s+([\d.]+|[가-힣]+\s+[\d.]+[A-Za-z]?)\s+[-–—]\s+(적합|부적합|—)'
+        return []
 
-        for match in re.finditer(pesticide_pattern, text):
-            pesticide_name = match.group(1).strip()
-            detection_value = match.group(2).strip()
-            korea_mrl = match.group(3).strip()
-            result_opinion = match.group(4).strip()
+    # 모과 검정증명서 형식에 맞는 행 패턴 (검토의견이 없는 형식)
+    results = []
+    # 검토의견이 없거나 "-" 표시인 경우를 위한 수정 패턴
+    # 패턴을 수정하여 전체 MRL 텍스트(형식 포함)를 추출하도록 변경
+    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)(?:-\s+-)?'
 
-            # MRL 값에서 숫자만 추출
-            mrl_value_match = re.search(r'([\d.]+)', korea_mrl)
-            if mrl_value_match:
-                korea_mrl = mrl_value_match.group(1).strip()
+    for match in re.finditer(row_pattern, results_text):
+        try:
+            pesticide_name = match.group(1).strip() if match.group(1) else ""
+            detection_value = match.group(2).strip() if match.group(2) else ""
+            korea_mrl_raw = match.group(3).strip() if match.group(3) else ""
 
-            logger.info(f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL: {korea_mrl}, 결과: {result_opinion}")
+            # 검토의견 필드가 없는 경우 "-"로 설정
+            result_opinion = "-"
+
+            # MRL 값에서 숫자만 추출 (계산용)
+            mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
+            korea_mrl_value = mrl_value_match.group(1) if mrl_value_match else None
+
+            # 전체 MRL 텍스트 유지 (표시용)
+            korea_mrl_text = korea_mrl_raw
+
+            logger.info(
+                f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL 값: {korea_mrl_value}, MRL 전체: {korea_mrl_text}, 결과: {result_opinion}")
 
             results.append({
                 'pesticide_name': pesticide_name,
                 'detection_value': detection_value,
-                'korea_mrl': korea_mrl,
+                'korea_mrl': korea_mrl_value,  # 숫자값 (계산용)
+                'korea_mrl_text': korea_mrl_text,  # 전체 텍스트 (표시용)
                 'export_country': None,
                 'export_mrl': None,
-                'result_opinion': result_opinion if result_opinion != '—' else '적합'
+                'result_opinion': result_opinion
             })
-
-        return results
-
-    # 결과 테이블에서 각 행 추출
-    results = []
-    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]+?)\s+([^\n\r]*?)\s+(적합|부적합|—)'
-
-    for match in re.finditer(row_pattern, results_text):
-        pesticide_name = match.group(1).strip()
-        detection_value = match.group(2).strip()
-        korea_mrl_raw = match.group(3).strip()
-        export_info = match.group(4).strip()
-        result_opinion = match.group(5).strip()
-
-        # MRL 값에서 숫자만 추출
-        mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
-        korea_mrl = mrl_value_match.group(1) if mrl_value_match else None
-
-        # 수출국 정보가 있는 경우 분리
-        export_country = None
-        export_mrl = None
-        if export_info:
-            export_parts = export_info.split()
-            if len(export_parts) > 1:
-                export_country = export_parts[0]
-                export_mrl_match = re.search(r'([\d.]+)', export_parts[-1])
-                if export_mrl_match:
-                    export_mrl = export_mrl_match.group(1)
-
-        logger.info(f"추출된 농약 결과: {pesticide_name}, 검출량: {detection_value}, 한국 MRL: {korea_mrl}, 결과: {result_opinion}")
-
-        results.append({
-            'pesticide_name': pesticide_name,
-            'detection_value': detection_value,
-            'korea_mrl': korea_mrl,
-            'export_country': export_country,
-            'export_mrl': export_mrl,
-            'result_opinion': result_opinion if result_opinion != '—' else '적합'
-        })
+        except Exception as e:
+            logger.error(f"행 파싱 중 오류: {str(e)}, 행: {match.group(0) if match else 'None'}")
 
     logger.info(f"추출된 농약 결과 수: {len(results)}")
     return results
@@ -402,36 +384,75 @@ def verify_pesticide_results(parsing_result):
                         food_name__iexact=sample_description
                     ).first()
 
+                    # 기존 내부 API 호출 방식 부분을 제거하고 직접 API 호출 방식으로 변경
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
                         logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
-                    else:
-                        # 카테고리 매칭 시도 (내부 API 호출)
+                    # 직접 매칭이 없는 경우에만 API를 호출하여 값을 가져옴
+                    if not direct_match:
                         try:
-                            from api.views import PesticideLimitViewSet
-                            # 내부적으로 API 호출하는 것과 유사한 로직 구현
-                            viewset = PesticideLimitViewSet()
-                            viewset.request = type('obj', (object,), {
-                                'query_params': {'pesticide': standard_pesticide_name, 'food': sample_description}
-                            })
+                            # 현재 서버의 API 엔드포인트를 호출
+                            import requests
+                            from django.conf import settings
 
-                            # 검색 API 호출
-                            response = viewset.list(viewset.request)
+                            # 서버 주소와 포트 설정
+                            host = 'localhost'
+                            port = '8000'  # Django 서버 포트
+
+                            # API 엔드포인트 URL 구성
+                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={sample_description}"
+
+                            # API 호출
+                            response = requests.get(api_url)
 
                             if response.status_code == 200:
-                                limits_data = response.data
-                                if limits_data and len(limits_data) > 0:
-                                    # 첫 번째 결과 사용
-                                    db_korea_mrl = decimal.Decimal(limits_data[0].get('max_residue_limit', 0))
-                                    logger.info(
-                                        f"API 검색 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
-                        except Exception as api_error:
-                            logger.error(f"내부 API 호출 오류: {str(api_error)}")
+                                data = response.json()
+                                if data and len(data) > 0:
+                                    # API 응답에서 값 추출
+                                    db_korea_mrl = decimal.Decimal(data[0].get('max_residue_limit', 0))
+                                    db_korea_mrl_text = data[0].get('food_name', '')
 
-                        # 카테고리 매칭이 실패하면 PDF에서 추출한 값 사용
-                        if db_korea_mrl is None and pdf_korea_mrl is not None:
-                            db_korea_mrl = pdf_korea_mrl
-                            logger.info(f"카테고리 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+                                    # 조건 코드 정보 추출 (T 등 특수 기호)
+                                    condition_code = data[0].get('condition_code_symbol', '')
+                                    condition_desc = data[0].get('condition_code_description', '')
+
+                                    # 완전한 형식의 허용기준 텍스트 구성
+                                    if condition_code:
+                                        formatted_value = f"{db_korea_mrl:.1f}"
+                                        db_korea_mrl_display = f"{db_korea_mrl}{condition_code}"
+                                    else:
+                                        formatted_value = f"{db_korea_mrl:.1f}"
+                                        db_korea_mrl_display = f"{db_korea_mrl}"
+
+                                    logger.info(
+                                        f"API 호출 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
+                                else:
+                                    # 결과가 없으면 PDF에서 추출한 값을 사용 (수정된 부분)
+                                    if pdf_korea_mrl is not None:
+                                        db_korea_mrl = pdf_korea_mrl
+                                        db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                        logger.info(f"API 결과 없음: PDF 값 사용 - {db_korea_mrl_display}")
+                                    else:
+                                        # PDF에도 없는 경우 PLS 기본값 사용
+                                        db_korea_mrl = decimal.Decimal('0.01')
+                                        db_korea_mrl_display = "PLS 0.01"
+                                        logger.info(f"API 결과 없음, PDF 값도 없음: PLS 적용")
+                            else:
+                                # API 호출 실패 시 PDF 값 사용
+                                if pdf_korea_mrl is not None:
+                                    db_korea_mrl = pdf_korea_mrl
+                                    db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                    logger.info(f"API 호출 실패: PDF 값 사용 - {db_korea_mrl_display}")
+                                else:
+                                    logger.error(f"API 호출 실패({response.status_code}), PDF 값도 없음")
+                        except Exception as api_error:
+                            # 예외 발생 시 PDF 값 사용
+                            if pdf_korea_mrl is not None:
+                                db_korea_mrl = pdf_korea_mrl
+                                db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                logger.error(f"API 호출 오류({str(api_error)}): PDF 값 사용 - {db_korea_mrl_display}")
+                            else:
+                                logger.error(f"API 호출 오류({str(api_error)}), PDF 값도 없음")
             else:
                 # 유사한 이름 검색 (첫 4글자로 유사 검색)
                 similar_pesticides = PesticideLimit.objects.filter(
@@ -495,7 +516,9 @@ def verify_pesticide_results(parsing_result):
             'pesticide_name_match': pesticide_name_match,
             'detection_value': detection_value,
             'pdf_korea_mrl': pdf_korea_mrl,
+            'pdf_korea_mrl_text': result.get('korea_mrl_text', ''),
             'db_korea_mrl': db_korea_mrl,
+            'db_korea_mrl_display': db_korea_mrl_display if 'db_korea_mrl_display' in locals() else '',  # 표시용 문자열
             'export_country': result.get('export_country'),
             'export_mrl': result.get('export_mrl'),
             'pdf_result': result['result_opinion'],
@@ -554,6 +577,7 @@ def save_certificate_data(parsing_result, verification_result, pdf_file):
                 pesticide_name_match=result['pesticide_name_match'],
                 detection_value=result['detection_value'],
                 pdf_korea_mrl=result['pdf_korea_mrl'],
+                pdf_korea_mrl_text=result.get('pdf_korea_mrl_text', ''),
                 db_korea_mrl=result['db_korea_mrl'],
                 export_country=result['export_country'],
                 export_mrl=result['export_mrl'],

@@ -224,6 +224,7 @@ const CertificateBasicInfo = ({ data }) => {
 };
 
 // 농약 검출 결과 및 검증 결과 표시 컴포넌트
+// 1. 결과 판정 로직 수정 - 백엔드에서 가져온 농약 검출 결과에 대한 처리
 const PesticideResultsVerification = ({ results }) => {
   if (!results || results.length === 0) {
     return (
@@ -242,9 +243,8 @@ const PesticideResultsVerification = ({ results }) => {
     );
   }
   
-  console.log("프론트엔드에서 결과 데이터:", results); // 디버깅용 로그  
-  
-
+  // 결과에 검토의견(pdf_result)이 모두 비어있는지 확인
+  const hasEmptyReviewOpinions = results.every(result => !result.pdf_result || result.pdf_result === '-' || result.pdf_result === '');
   
   return (
     <Card sx={{ mb: 3 }}>
@@ -266,65 +266,94 @@ const PesticideResultsVerification = ({ results }) => {
                 <TableCell align="right">검출량(mg/kg)</TableCell>
                 <TableCell align="right">PDF 잔류허용기준</TableCell>
                 <TableCell align="right">DB 잔류허용기준</TableCell>
+                
+                {/* 검토의견이 없는 경우에도 PDF 판정 열은 유지 */}
                 <TableCell align="center">PDF 판정</TableCell>
-                <TableCell align="center">계산 판정</TableCell>
+                
+                {/* 검토의견이 없는 경우 계산 판정 열 숨김 */}
+                {!hasEmptyReviewOpinions && (
+                  <TableCell align="center">계산 판정</TableCell>
+                )}
+                
                 <TableCell align="center">판정여부</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {results.map((result, index) => (
-                <TableRow 
-                  key={index}
-                  sx={{ 
-                    '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' },
-                    ...(result.is_pdf_consistent ? {} : { backgroundColor: 'error.lighter' })
-                  }}
-                >
-                  <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
-                    {result.pesticide_name}
-                  </TableCell>
-                  <TableCell>
-                    {result.standard_pesticide_name || '-'}
-                  </TableCell>
-                  <TableCell align="center">
-                    {result.pesticide_name_match ? (
-                      <CheckCircleOutline color="success" fontSize="small" />
-                    ) : (
-                      <ErrorOutline color="error" fontSize="small" />
+              {results.map((result, index) => {
+                // 검토의견이 비어있는 경우 판정여부는 성분명 검증과 잔류허용기준 일치 여부만 확인
+                const verificationStatus = hasEmptyReviewOpinions
+                  ? (result.pesticide_name_match && 
+                     (result.pdf_korea_mrl === result.db_korea_mrl || 
+                      (parseFloat(result.pdf_korea_mrl) === parseFloat(result.db_korea_mrl))))
+                  : result.is_pdf_consistent;
+                
+                return (
+                  <TableRow 
+                    key={index}
+                    sx={{ 
+                      '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' },
+                      ...(!verificationStatus ? { backgroundColor: 'error.lighter' } : {})
+                    }}
+                  >
+                    <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
+                      {result.pesticide_name}
+                    </TableCell>
+                    <TableCell>
+                      {result.standard_pesticide_name || '-'}
+                    </TableCell>
+                    <TableCell align="center">
+                      {result.pesticide_name_match ? (
+                        <CheckCircleOutline color="success" fontSize="small" />
+                      ) : (
+                        <ErrorOutline color="error" fontSize="small" />
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      {parseFloat(result.detection_value).toFixed(3)}
+                    </TableCell>
+                    {/* PDF 잔류허용기준 표시 부분 */}
+                    <TableCell align="right">
+                      {result.pdf_korea_mrl_text ? result.pdf_korea_mrl_text : 
+                      (result.pdf_korea_mrl ? parseFloat(result.pdf_korea_mrl).toFixed(1) : '-')}
+                    </TableCell>
+                    {/* DB 잔류허용기준 표시 부분 */}
+                    <TableCell align="right">
+                      {result.db_korea_mrl ? parseFloat(result.db_korea_mrl).toFixed(1) : '-'}
+                    </TableCell>
+                    {/* 검토의견이 비어있는 경우 PDF 판정은 '-'로 표시 */}
+                    <TableCell align="center">
+                      {!result.pdf_result || result.pdf_result === '-' ? (
+                        '-'
+                      ) : (
+                        <Chip 
+                          label={result.pdf_result} 
+                          color={result.pdf_result === '적합' ? 'success' : 'error'}
+                          size="small"
+                        />
+                      )}
+                    </TableCell>
+                    
+                    {/* 검토의견이 없는 경우에만 계산 판정 열 표시 */}
+                    {!hasEmptyReviewOpinions && (
+                      <TableCell align="center">
+                        <Chip 
+                          label={result.pdf_calculated_result} 
+                          color={result.pdf_calculated_result === '적합' ? 'success' : 'error'}
+                          size="small"
+                        />
+                      </TableCell>
                     )}
-                  </TableCell>
-                  <TableCell align="right">
-                    {parseFloat(result.detection_value).toFixed(3)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {result.pdf_korea_mrl ? parseFloat(result.pdf_korea_mrl).toFixed(1) : '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    {result.db_korea_mrl ? parseFloat(result.db_korea_mrl).toFixed(1) : '-'}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip 
-                      label={result.pdf_result} 
-                      color={result.pdf_result === '적합' ? 'success' : 'error'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip 
-                      label={result.pdf_calculated_result} 
-                      color={result.pdf_calculated_result === '적합' ? 'success' : 'error'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    {result.is_pdf_consistent ? (
-                      <CheckCircleOutline color="success" />
-                    ) : (
-                      <ErrorOutline color="error" />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    
+                    <TableCell align="center">
+                      {verificationStatus ? (
+                        <CheckCircleOutline color="success" />
+                      ) : (
+                        <ErrorOutline color="error" />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -333,8 +362,34 @@ const PesticideResultsVerification = ({ results }) => {
   );
 };
 
-// 종합 평가 컴포넌트
-const VerificationSummary = ({ resultsConsistency, inconsistentResultsCount }) => {
+// 2. 종합 평가 컴포넌트 수정 - 검토의견이 비어있는 경우 처리
+const VerificationSummary = ({ results }) => {
+  // 검토의견이 비어있는지 확인
+  const hasEmptyReviewOpinions = results.every(result => !result.pdf_result || result.pdf_result === '-' || result.pdf_result === '');
+  
+  // 판정여부 로직 수정
+  let resultsConsistency = true;
+  let inconsistentResultsCount = 0;
+  
+  if (hasEmptyReviewOpinions) {
+    // 검토의견이 비어있는 경우: 성분명 검증과 잔류허용기준 일치 여부만 확인
+    resultsConsistency = results.every(result => 
+      result.pesticide_name_match && 
+      (result.pdf_korea_mrl === result.db_korea_mrl || 
+       (parseFloat(result.pdf_korea_mrl) === parseFloat(result.db_korea_mrl)))
+    );
+    
+    inconsistentResultsCount = results.filter(result => 
+      !result.pesticide_name_match || 
+      (result.pdf_korea_mrl !== result.db_korea_mrl && 
+       parseFloat(result.pdf_korea_mrl) !== parseFloat(result.db_korea_mrl))
+    ).length;
+  } else {
+    // 기존 로직: 검토의견이 있는 경우 is_pdf_consistent 사용
+    resultsConsistency = results.every(r => r.is_pdf_consistent);
+    inconsistentResultsCount = results.filter(r => !r.is_pdf_consistent).length;
+  }
+  
   return (
     <Card>
       <CardContent>
@@ -346,17 +401,24 @@ const VerificationSummary = ({ resultsConsistency, inconsistentResultsCount }) =
         
         {resultsConsistency ? (
           <Alert severity="success" sx={{ mb: 2 }}>
-            모든 검토의견이 정확하게 평가되었습니다.
+            {hasEmptyReviewOpinions 
+              ? "모든 농약성분명과 잔류허용기준이 정확하게 확인되었습니다."
+              : "모든 검토의견이 정확하게 평가되었습니다."
+            }
           </Alert>
         ) : (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            일부 검토의견 불일치가 발견되었습니다. ({inconsistentResultsCount}건)
+            {hasEmptyReviewOpinions
+              ? `일부 농약성분명 또는 잔류허용기준 불일치가 발견되었습니다. (${inconsistentResultsCount}건)`
+              : `일부 검토의견 불일치가 발견되었습니다. (${inconsistentResultsCount}건)`
+            }
           </Alert>
         )}
       </CardContent>
     </Card>
   );
 };
+
 
 // 메인 컴포넌트
 const CertificateAnalysisPage = () => {
@@ -488,10 +550,7 @@ const CertificateAnalysisPage = () => {
           <PesticideResultsVerification results={verificationResults} />
           
           {/* 종합 평가 및 요약 */}
-          <VerificationSummary 
-            resultsConsistency={verificationResults.every(r => r.is_pdf_consistent)}
-            inconsistentResultsCount={verificationResults.filter(r => !r.is_pdf_consistent).length}
-          />
+          <VerificationSummary results={verificationResults} />
         </>
       )}
     </Box>

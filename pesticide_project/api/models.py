@@ -196,6 +196,14 @@ class PesticideResult(models.Model):
     pesticide_name_match = models.BooleanField(default=True, verbose_name='농약성분명 일치여부')
     detection_value = models.DecimalField(max_digits=10, decimal_places=3, verbose_name='검출량(mg/kg)')
 
+    # 추가: PDF에서 추출한 MRL의 전체 텍스트
+    pdf_korea_mrl_text = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        verbose_name='PDF 잔류허용기준 텍스트'
+    )
+
     # PDF에 표시된 잔류허용기준
     pdf_korea_mrl = models.DecimalField(
         max_digits=10,
@@ -203,6 +211,20 @@ class PesticideResult(models.Model):
         null=True,
         blank=True,
         verbose_name='PDF 잔류허용기준(mg/kg)'
+    )
+
+    db_korea_mrl_text = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name='DB 잔류허용기준 텍스트'
+    )
+
+    db_korea_mrl_symbol = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        verbose_name='DB 잔류허용기준 기호'
     )
 
     # DB에 저장된 잔류허용기준
