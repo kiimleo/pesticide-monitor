@@ -152,6 +152,25 @@ const CertificateBasicInfo = ({ data }) => {
           <Grid item xs={12} md={6}>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                검정 목적
+              </Typography>
+              <Typography variant="body1" fontWeight={
+                data.analytical_purpose && data.analytical_purpose.includes('친환경') 
+                  ? 'bold' 
+                  : 'medium'
+              } color={
+                data.analytical_purpose && data.analytical_purpose.includes('친환경') 
+                  ? 'secondary.main' 
+                  : 'inherit'
+              }>
+                {data.analytical_purpose || '-'}
+              </Typography>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 증명서 번호
               </Typography>
               <Typography variant="body1" fontWeight="medium">
@@ -367,9 +386,13 @@ const PesticideResultsVerification = ({ results }) => {
 };
 
 // 2. 종합 평가 컴포넌트 수정 - 검토의견이 비어있는 경우 처리
+// 종합 평가 컴포넌트에 친환경 표시 추가
 const VerificationSummary = ({ results }) => {
   // 검토의견이 비어있는지 확인
   const hasEmptyReviewOpinions = results.every(result => !result.pdf_result || result.pdf_result === '-' || result.pdf_result === '');
+  
+  // 친환경 검정 여부 확인
+  const isEcoFriendly = results.length > 0 && results[0].is_eco_friendly;
   
   // 판정여부 로직 수정
   let resultsConsistency = true;
@@ -402,6 +425,12 @@ const VerificationSummary = ({ results }) => {
         </Typography>
         
         <Divider sx={{ mb: 2 }} />
+        
+        {isEcoFriendly && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            이 검정증명서는 <strong>친환경인증용</strong>으로, 농약 검출량이 <strong>0.01 mg/kg 미만</strong>이어야 적합 판정을 받습니다.
+          </Alert>
+        )}
         
         {resultsConsistency ? (
           <Alert severity="success" sx={{ mb: 2 }}>

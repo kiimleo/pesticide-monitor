@@ -172,18 +172,27 @@ def extract_certificate_number(text):
 
 def extract_applicant_info(text):
     """
-    텍스트에서 신청인 정보 추출
+    텍스트에서 신청인 정보 추출 - 개선 버전
     """
-    name_pattern = r'신청인.*?성명\(법인의 경우에는 명칭\):\s*([^\n]+)'
+    name_pattern = r'성명\(법인의 경우에는 명칭\):\s*([^\n]+)'
+    alt_name_pattern = r'성명\(법인의\s+경우에는\s+명칭\):\s*([^\n]+)'
     id_pattern = r'법인등록번호:\s*([^\n]+)'
     address_pattern = r'주소\(Address\):\s*([^\n]+)'
-    tel_pattern = r'전화번호\(Tel\.\):\s*([^\n]+)'
+    tel_pattern = r'전화번호[^:]*:\s*([^\n]+)'
 
     info = {}
 
     name_match = re.search(name_pattern, text, re.DOTALL)
+    if not name_match:
+        name_match = re.search(alt_name_pattern, text, re.DOTALL)
+
     if name_match:
         info['name'] = name_match.group(1).strip()
+    else:
+        # 테이블 기반 추출 시도
+        table_match = re.search(r'성명\(법인의\s+경우에는\s+명칭\)[^:]*:\s*([^\n\r]+)', text)
+        if table_match:
+            info['name'] = table_match.group(1).strip()
 
     id_match = re.search(id_pattern, text)
     if id_match:
@@ -206,20 +215,20 @@ def extract_applicant_info(text):
 
 def extract_test_info(text):
     """
-    검정증명서 PDF에서 추출한 텍스트에서 필요한 정보를 추출
+    검정증명서 PDF에서 추출한 텍스트에서 필요한 정보를 추출 - 개선된 버전
     """
     logger.info(f"텍스트 추출 시작: 길이 {len(text)} 글자")
 
-    # 정확한 패턴 정의
+    # 정확한 패턴 정의 (새로운 양식에 맞춰 업데이트)
     patterns = {
         'certificate_number': r'제\s+(\d{4}-\d{5})\s+호|제\s+(\d{4}-\d{5})|Certificate\s+Number[:：]?\s*(\d{4}-\d{5})',
-        'analytical_purpose': r'검정\s+목적[^가-힣\s]*\s*([^\n\r]+)|Analytical\s+Purpose[^A-Za-z\s]*\s*([^\n\r]+)',
-        'sample_description': r'검정\s+품목[^가-힣\s]*\s*([^\n\r]+)|Sample\s+Description[^A-Za-z\s]*\s*([^\n\r]+)',
-        'producer_info': r'성명/수거지[^가-힣\s]*\s*([^\n\r]+)',
-        'analyzed_items': r'검정\s+항목[^가-힣\s]*\s*([^\n\r]+)|Analyzed\s+Items[^A-Za-z\s]*\s*([^\n\r]+)',
-        'sample_quantity': r'시료\s+점수\s+및\s+중량[^가-힣\s]*\s*([^\n\r]+)|Quantity\s+of\s+Samples[^A-Za-z\s]*\s*([^\n\r]+)',
-        'test_period': r'검정\s+기간[^가-힣\s]*\s*([^\n\r]+)|Date\s+of\s+Test[^A-Za-z\s]*\s*([^\n\r]+)',
-        'analytical_method': r'검정\s+방법[^가-힣\s]*\s*([^\n\r]+)|Analytical\s+Method\s+used[^A-Za-z\s]*\s*([^\n\r]+)'
+        'analytical_purpose': r'검정\s*목적[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Analytical\s+Purpose[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)',
+        'sample_description': r'검정\s*품목[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Sample\s+Description[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)',
+        'producer_info': r'성명/수거지\s*[:：]?\s*([^\n\r]+)',
+        'analyzed_items': r'검정\s*항목[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Analyzed\s+Items[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)',
+        'sample_quantity': r'시료\s+점수\s+및\s+중량[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Quantity\s+of\s+Samples[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)',
+        'test_period': r'검정\s*기간[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Date\s+of\s+Test[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)',
+        'analytical_method': r'검정\s*방법[^가-힣\s]*\s*[:：]?\s*([^\n\r]+)|Analytical\s+Method\s+used[^A-Za-z\s]*\s*[:：]?\s*([^\n\r]+)'
     }
 
     results = {}
@@ -242,11 +251,19 @@ def extract_test_info(text):
 
     # 검정 기간에서 시작일/종료일 분리
     if 'test_period' in results:
+        # 기존 형식(YYYY.MM.DD. ~ YYYY.MM.DD.)
         dates_match = re.search(r'(\d{4}\.\d{2}\.\d{2}\.?)\s*~\s*(\d{4}\.\d{2}\.\d{2}\.?)', results['test_period'])
         if dates_match:
             results['test_start_date'] = dates_match.group(1).replace('.', '-').rstrip('-')
             results['test_end_date'] = dates_match.group(2).replace('.', '-').rstrip('-')
             logger.info(f"검정 기간 분리: 시작일={results['test_start_date']}, 종료일={results['test_end_date']}")
+        else:
+            # 새로운 형식(YYYY.MM.DD~YYYY.MM.DD) 처리
+            dates_match = re.search(r'(\d{4}\.\d{2}\.\d{2})~(\d{4}\.\d{2}\.\d{2})', results['test_period'])
+            if dates_match:
+                results['test_start_date'] = dates_match.group(1).replace('.', '-')
+                results['test_end_date'] = dates_match.group(2).replace('.', '-')
+                logger.info(f"검정 기간 분리(새 형식): 시작일={results['test_start_date']}, 종료일={results['test_end_date']}")
 
     # 결과 매핑
     result = {
@@ -271,10 +288,9 @@ def extract_test_info(text):
     return result
 
 
-# certificate_parser.py 파일의 extract_pesticide_results 함수 수정
 def extract_pesticide_results(text):
     """
-    텍스트에서 농약 검출 결과 추출 - 검정증명서 형식에 최적화
+    텍스트에서 농약 검출 결과 추출 - 검정증명서 형식에 최적화 (개선된 버전)
     """
     logger.info("농약 검출 결과 추출 시작")
 
@@ -282,7 +298,9 @@ def extract_pesticide_results(text):
     table_patterns = [
         r'결과\s*검출량.*?잔류허용기준.*?\n(.*?)※',
         r'Results\s*검출량.*?MRL.*?\n(.*?)※',
-        r'결과.*?\(Results\).*?검출량.*?잔류허용기준.*?\n(.*?)※'
+        r'결과.*?\(Results\).*?검출량.*?잔류허용기준.*?\n(.*?)※',
+        r'검정결과.*?\n.*?결과.*?검출량.*?잔류허용기준.*?\n(.*?)확인',
+        r'결과\s*\(Results\).*?검출량\s*\(mg\/kg\).*?검토의견.*?\n(.*?)확인'
     ]
 
     results_text = None
@@ -295,49 +313,162 @@ def extract_pesticide_results(text):
             break
 
     if not results_text:
+        # 전체 텍스트에서 직접 농약 결과 행 패턴 검색
         logger.warning("결과 테이블 매칭 실패, 전체 텍스트에서 농약 결과 검색")
-        return []
 
-    # 모과 검정증명서 형식에 맞는 행 패턴 (검토의견이 없는 형식)
+        # 농약 결과 행을 직접 찾는 패턴
+        direct_row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]*?)\s+([^\n\r]+?)$'
+        results = []
+
+        for line in text.split('\n'):
+            # 각 줄마다 농약 검출 결과 패턴 검색
+            match = re.search(direct_row_pattern, line.strip())
+            if match and re.match(r'[A-Za-z]', match.group(1)):  # 첫 글자가 영문인지 확인
+                try:
+                    pesticide_name = match.group(1).strip()
+                    detection_value = match.group(2).strip()
+
+                    # MRL 값과 검토의견 추출 시도
+                    rest_of_line = match.group(3).strip() + " " + match.group(4).strip()
+
+                    # MRL 값 찾기
+                    mrl_match = re.search(r'([\d.]+)', rest_of_line)
+                    korea_mrl = mrl_match.group(1) if mrl_match else None
+                    korea_mrl_text = korea_mrl if korea_mrl else "-"
+
+                    # 검토의견 찾기 (일반적으로 '적합' 또는 '-' 등)
+                    opinion_match = re.search(r'(적합|부적합|-)', rest_of_line)
+                    result_opinion = opinion_match.group(1) if opinion_match else "-"
+
+                    logger.info(
+                        f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL 값: {korea_mrl}, 검토의견: {result_opinion}")
+
+                    results.append({
+                        'pesticide_name': pesticide_name,
+                        'detection_value': detection_value,
+                        'korea_mrl': korea_mrl,
+                        'korea_mrl_text': korea_mrl_text,
+                        'export_country': None,
+                        'export_mrl': None,
+                        'result_opinion': result_opinion
+                    })
+                except Exception as e:
+                    logger.error(f"행 직접 파싱 중 오류: {str(e)}, 행: {line}")
+
+        logger.info(f"직접 검색으로 추출된 농약 결과 수: {len(results)}")
+        return results
+
+    # 기존 형식에 맞는 행 패턴
+    row_patterns = [
+        # 기존 패턴 1: 농약명 검출량 MRL값 - 적합
+        r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)\s+-\s+(\S+)',
+
+        # 기존 패턴 2: 농약명 검출량 MRL값 검토의견
+        r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)\s+(\S+)',
+
+        # 새 패턴: 새로운 형식 (농약명 검출량 MRL값 - - -)
+        r'([A-Za-z][\w-]+)\s+([\d.]+)\s+(-)\s+(-)\s+(-)'
+    ]
+
     results = []
-    # 검토의견이 없거나 "-" 표시인 경우를 위한 수정 패턴
-    # 이 패턴은 농약명, 검출량, MRL 값, 그리고 마지막에 "적합"/"부적합" 검토의견을 캡처합니다
-    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]+?)\s+-\s+(\S+)'
-    # row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)(?:-\s+-)?'
+    found_match = False
 
-    for match in re.finditer(row_pattern, results_text):
-        try:
-            pesticide_name = match.group(1).strip() if match.group(1) else ""
-            detection_value = match.group(2).strip() if match.group(2) else ""
-            korea_mrl_raw = match.group(3).strip() if match.group(3) else ""
+    for pattern in row_patterns:
+        matches = re.finditer(pattern, results_text, re.MULTILINE)
+        for match in matches:
+            try:
+                pesticide_name = match.group(1).strip()
+                detection_value = match.group(2).strip()
 
-            # 검토의견 추출 (수정된 부분)
-            result_opinion = match.group(4).strip() if match.group(4) else "-"
+                # 패턴에 따라 다른 그룹에서 값을 추출
+                if pattern == row_patterns[0]:  # 첫 번째 패턴: 농약명 검출량 MRL값 - 적합
+                    korea_mrl_raw = match.group(3).strip()
+                    result_opinion = match.group(4).strip()
+                elif pattern == row_patterns[1]:  # 두 번째 패턴: 농약명 검출량 MRL값 검토의견
+                    korea_mrl_raw = match.group(3).strip()
+                    result_opinion = match.group(4).strip()
+                else:  # 세 번째 패턴: 농약명 검출량 - - -
+                    korea_mrl_raw = "-"
+                    result_opinion = "-"
 
-            # MRL 값에서 숫자만 추출 (계산용)
-            mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
-            korea_mrl_value = mrl_value_match.group(1) if mrl_value_match else None
+                # MRL 값에서 숫자만 추출 (계산용)
+                mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
+                korea_mrl_value = mrl_value_match.group(1) if mrl_value_match else None
 
-            # 전체 MRL 텍스트 유지 (표시용)
-            korea_mrl_text = korea_mrl_raw
+                # 전체 MRL 텍스트 유지 (표시용)
+                korea_mrl_text = korea_mrl_raw
 
-            logger.info(
-                f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL 값: {korea_mrl_value}, MRL 전체: {korea_mrl_text}, 결과: {result_opinion}")
+                logger.info(
+                    f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL 값: {korea_mrl_value}, MRL 전체: {korea_mrl_text}, 결과: {result_opinion}")
 
-            results.append({
-                'pesticide_name': pesticide_name,
-                'detection_value': detection_value,
-                'korea_mrl': korea_mrl_value,  # 숫자값 (계산용)
-                'korea_mrl_text': korea_mrl_text,  # 전체 텍스트 (표시용)
-                'export_country': None,
-                'export_mrl': None,
-                'result_opinion': result_opinion
-            })
-        except Exception as e:
-            logger.error(f"행 파싱 중 오류: {str(e)}, 행: {match.group(0) if match else 'None'}")
+                results.append({
+                    'pesticide_name': pesticide_name,
+                    'detection_value': detection_value,
+                    'korea_mrl': korea_mrl_value,
+                    'korea_mrl_text': korea_mrl_text,
+                    'export_country': None,
+                    'export_mrl': None,
+                    'result_opinion': result_opinion
+                })
+                found_match = True
+            except Exception as e:
+                logger.error(f"행 파싱 중 오류: {str(e)}, 행: {match.group(0) if match else 'None'}")
+
+    # 어떤 패턴도 매칭되지 않았다면 직접 텍스트 분석 시도
+    if not found_match:
+        logger.warning("패턴 매칭 실패, 직접 텍스트 분석 시도")
+        lines = results_text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('(') or not re.match(r'^[A-Za-z]', line):
+                continue
+
+            parts = re.split(r'\s+', line)
+            if len(parts) >= 2 and re.match(r'^[A-Za-z]', parts[0]) and re.match(r'^[\d.]+$', parts[1]):
+                try:
+                    pesticide_name = parts[0]
+                    detection_value = parts[1]
+
+                    # 나머지 부분을 분석하여 MRL 값과 검토의견 추출 시도
+                    rest_parts = parts[2:]
+                    korea_mrl_value = next((p for p in rest_parts if re.match(r'^[\d.]+$', p)), None)
+                    korea_mrl_text = korea_mrl_value if korea_mrl_value else "-"
+
+                    # 검토의견 찾기 (일반적으로 '적합' 또는 '-' 등)
+                    result_opinion = next((p for p in rest_parts if re.match(r'^(적합|부적합|-|해당없음)$', p)), "-")
+
+                    logger.info(
+                        f"직접 분석으로 농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL: {korea_mrl_value}, 검토의견: {result_opinion}")
+
+                    results.append({
+                        'pesticide_name': pesticide_name,
+                        'detection_value': detection_value,
+                        'korea_mrl': korea_mrl_value,
+                        'korea_mrl_text': korea_mrl_text,
+                        'export_country': None,
+                        'export_mrl': None,
+                        'result_opinion': result_opinion
+                    })
+                except Exception as e:
+                    logger.error(f"직접 분석 중 오류: {str(e)}, 행: {line}")
 
     logger.info(f"추출된 농약 결과 수: {len(results)}")
-    return results
+    # 중복 제거를 위한 집합
+    unique_pesticides = set()
+    unique_results = []
+
+    # 각 패턴 처리 후
+    for result in results:
+        # 농약성분명과 검출량으로 고유 식별자 생성
+        pesticide_key = f"{result['pesticide_name']}_{result['detection_value']}"
+
+        # 중복이 아닌 경우에만 추가
+        if pesticide_key not in unique_pesticides:
+            unique_pesticides.add(pesticide_key)
+            unique_results.append(result)
+
+    logger.info(f"중복 제거 후 농약 결과 수: {len(unique_results)}")
+    return unique_results
 
 
 def verify_pesticide_results(parsing_result):
@@ -353,6 +484,13 @@ def verify_pesticide_results(parsing_result):
         '깻잎': '들깻잎',
         # 다른 매핑 추가 가능
     }
+
+    # 친환경 검정인지 확인
+    is_eco_friendly = False
+    analytical_purpose = parsing_result.get('analytical_purpose', '')
+    if analytical_purpose and '친환경' in analytical_purpose:
+        is_eco_friendly = True
+        logger.info(f"친환경 검정 감지: {analytical_purpose}")
 
     verification_results = []
     sample_description = parsing_result.get('sample_description', '')
@@ -512,8 +650,17 @@ def verify_pesticide_results(parsing_result):
                 db_korea_mrl = pdf_korea_mrl
                 logger.info(f"오류 발생, PDF 값 사용: {pdf_korea_mrl}")
 
-        # PDF MRL로 적합/부적합 계산
-        pdf_calculated_result = '적합' if detection_value <= pdf_korea_mrl else '부적합'
+        # 친환경 검정인 경우 (친환경인증용)
+        if is_eco_friendly:
+            # 친환경 검정의 경우 검출량이 0.01 미만이어야 적합
+            eco_friendly_threshold = decimal.Decimal('0.01')
+            pdf_calculated_result = '적합' if detection_value < eco_friendly_threshold else '부적합'
+            logger.info(
+                f"친환경 기준 적용: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}, 결과: {pdf_calculated_result}")
+        else:
+            # 일반 검정의 경우 MRL 값 사용
+            # PDF MRL로 적합/부적합 계산
+            pdf_calculated_result = '적합' if detection_value <= pdf_korea_mrl else '부적합'
 
         # DB MRL로 적합/부적합 계산
         if db_korea_mrl is not None:
@@ -540,7 +687,8 @@ def verify_pesticide_results(parsing_result):
             'pdf_result': result['result_opinion'],
             'pdf_calculated_result': pdf_calculated_result,
             'db_calculated_result': db_calculated_result,
-            'is_pdf_consistent': is_pdf_consistent
+            'is_pdf_consistent': is_pdf_consistent,
+            'is_eco_friendly': is_eco_friendly,  # 친환경 여부 추가
         })
 
     return verification_results

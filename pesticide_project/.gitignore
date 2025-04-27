@@ -66,3 +66,6 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
+
+# 검정증명서 PDF 파일
+pesticide_project/certificates/
