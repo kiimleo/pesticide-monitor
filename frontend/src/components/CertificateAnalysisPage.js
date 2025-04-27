@@ -260,22 +260,22 @@ const PesticideResultsVerification = ({ results }) => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                <TableCell>농약성분명</TableCell>
+                <TableCell>기록된 농약성분명</TableCell>
                 <TableCell>표준명</TableCell>
                 <TableCell align="center">성분명검증</TableCell>
                 <TableCell align="right">검출량(mg/kg)</TableCell>
-                <TableCell align="right">PDF 잔류허용기준</TableCell>
-                <TableCell align="right">DB 잔류허용기준</TableCell>
+                <TableCell align="right">기록된 MRL</TableCell>
+                <TableCell align="right">표준 MRL</TableCell>
                 
                 {/* 검토의견이 없는 경우에도 PDF 판정 열은 유지 */}
-                <TableCell align="center">PDF 판정</TableCell>
+                <TableCell align="center">기록된 검토의견</TableCell>
                 
                 {/* 검토의견이 없는 경우 계산 판정 열 숨김 */}
                 {!hasEmptyReviewOpinions && (
-                  <TableCell align="center">계산 판정</TableCell>
+                  <TableCell align="center">Ai 판정</TableCell>
                 )}
                 
-                <TableCell align="center">판정여부</TableCell>
+                <TableCell align="center">검정증명서 검증결과</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -327,11 +327,13 @@ const PesticideResultsVerification = ({ results }) => {
                       {!result.pdf_result || result.pdf_result === '-' ? (
                         '-'
                       ) : (
-                        <Chip 
-                          label={result.pdf_result} 
-                          color={result.pdf_result === '적합' ? 'success' : 'error'}
-                          size="small"
-                        />
+                        <Typography 
+                          variant="body2"
+                          color={result.pdf_result === '적합' ? 'success.main' : 'error.main'}
+                          fontWeight="medium"
+                        >
+                          {result.pdf_result}
+                        </Typography>
                       )}
                     </TableCell>
                     

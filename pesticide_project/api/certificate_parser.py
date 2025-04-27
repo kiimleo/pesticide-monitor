@@ -301,8 +301,9 @@ def extract_pesticide_results(text):
     # 모과 검정증명서 형식에 맞는 행 패턴 (검토의견이 없는 형식)
     results = []
     # 검토의견이 없거나 "-" 표시인 경우를 위한 수정 패턴
-    # 패턴을 수정하여 전체 MRL 텍스트(형식 포함)를 추출하도록 변경
-    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)(?:-\s+-)?'
+    # 이 패턴은 농약명, 검출량, MRL 값, 그리고 마지막에 "적합"/"부적합" 검토의견을 캡처합니다
+    row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]+?)\s+-\s+(\S+)'
+    # row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)(?:-\s+-)?'
 
     for match in re.finditer(row_pattern, results_text):
         try:
@@ -310,8 +311,8 @@ def extract_pesticide_results(text):
             detection_value = match.group(2).strip() if match.group(2) else ""
             korea_mrl_raw = match.group(3).strip() if match.group(3) else ""
 
-            # 검토의견 필드가 없는 경우 "-"로 설정
-            result_opinion = "-"
+            # 검토의견 추출 (수정된 부분)
+            result_opinion = match.group(4).strip() if match.group(4) else "-"
 
             # MRL 값에서 숫자만 추출 (계산용)
             mrl_value_match = re.search(r'([\d.]+)', korea_mrl_raw)
