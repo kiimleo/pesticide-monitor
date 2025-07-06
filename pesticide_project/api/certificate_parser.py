@@ -20,9 +20,24 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
+
+# _____ 전체 실행 흐름 ______________
+# 업로드 → upload_certificate() 시작
+# 파싱 → parse_certificate_pdf() 호출
+# 세부 추출 → extract_*() 함수들이 각각 정보 추출
+# 검증 → verify_pesticide_results() 로 정확성 확인
+# 저장 → save_certificate_data() 로 DB에 저장
+# 완료 → 사용자에게 결과 반환
+
+
 def upload_certificate(request):
     """
-    검정증명서 PDF 업로드 및 파싱 엔드포인트
+    검정증명서 PDF 업로드 및 파싱 전체 처리 관리자
+    - 사용자가 PDF 파일을 업로드했을 때 가장 먼저 실행되는 함수
+    - 파일 형식 검증 (PDF인지 확인)
+    - 덮어쓰기 옵션 처리 (기존 증명서가 있으면 덮어쓸지 확인)
+    - 다른 함수들을 순서대로 호출하여 전체 과정을 관리
+    - 최종 결과를 사용자에게 JSON 형태로 반환
     """
     if 'file' not in request.FILES:
         return Response({'error': '파일을 업로드해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -118,23 +133,62 @@ def upload_certificate(request):
 
 def parse_certificate_pdf(pdf_file):
     """
-    검정증명서 PDF 파일에서 정보 파싱
+    pdfplumber를 사용한 PDF 파일 파싱 함수
+    - pdfplumber로 정확한 텍스트 추출 (표와 레이아웃 처리 우수)
+    - PDF 파일에서 텍스트를 추출
+    - 다른 추출 함수들을 호출하여 각 영역별 정보를 수집
+    - 증명서 번호, 신청인 정보, 검정 정보, 농약 결과를 하나로 합쳐서 반환
     """
     try:
-        # PDF 텍스트 추출
-        reader = PyPDF2.PdfReader(pdf_file)
+        # pdfplumber로 PDF 텍스트 추출
+        import pdfplumber
+
+        logger.info("pdfplumber로 PDF 텍스트 추출 시작")
         text = ""
-        for page in reader.pages:
-            text += page.extract_text()
+
+        with pdfplumber.open(pdf_file) as pdf:
+            logger.info(f"PDF 총 페이지 수: {len(pdf.pages)}")
+
+            for page_num, page in enumerate(pdf.pages):
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                    logger.info(f"페이지 {page_num + 1} 텍스트 추출 완료 ({len(page_text)} 글자)")
+                else:
+                    logger.warning(f"페이지 {page_num + 1}에서 텍스트를 찾을 수 없음")
+
+        # 텍스트 추출 결과 검증
+        if not text or len(text.strip()) < 50:
+            logger.error("추출된 텍스트가 너무 짧거나 비어있음")
+            return None
+
+        logger.info(f"텍스트 추출 성공 - 총 {len(text)} 글자, {text.count(chr(10))} 줄")
+
+        # 원시 텍스트 출력 (디버깅용)
+        print("\n" + "=" * 60)
+        print("PDF 원시 텍스트 (pdfplumber로 추출)")
+        print("=" * 60)
+        print(text)
+        print("=" * 60 + " 텍스트 끝 " + "=" * 60)
+        print(f"추출 통계: {len(text)} 글자, {text.count(chr(10))} 줄")
+        print("=" * 60)
 
         # 기본 정보 추출
+        logger.info("추출된 텍스트에서 정보 파싱 시작")
+
         certificate_number = extract_certificate_number(text)
+        logger.info(f"증명서 번호 추출: {certificate_number}")
+
         applicant_info = extract_applicant_info(text)
-        test_info = extract_test_info(text)
+        logger.info(f"신청인 정보 추출 완료")
+
+        test_info = extract_certificate_test_details(text)
+        logger.info(f"검정 정보 추출 완료")
+
         pesticide_results = extract_pesticide_results(text)
+        logger.info(f"농약 결과 추출 완료: {len(pesticide_results)}건")
 
-        logger.info(f"추출된 pesticide_results: {pesticide_results}")
-
+        # 결과 구성
         result = {
             'certificate_number': certificate_number,
             'applicant_name': applicant_info.get('name'),
@@ -146,22 +200,32 @@ def parse_certificate_pdf(pdf_file):
             'producer_info': test_info.get('producer_info'),
             'analyzed_items': test_info.get('analyzed_items'),
             'sample_quantity': test_info.get('sample_quantity'),
-            'test_start_date': test_info.get('test_start_date'),  # 직접 test_info에서 가져옴
-            'test_end_date': test_info.get('test_end_date'),  # 직접 test_info에서 가져옴
+            'test_start_date': test_info.get('test_start_date'),
+            'test_end_date': test_info.get('test_end_date'),
             'analytical_method': test_info.get('analytical_method'),
             'pesticide_results': pesticide_results
         }
 
+        logger.info("PDF 파싱 완료 - pdfplumber 방식으로 성공")
         return result
+
+    except ImportError:
+        logger.error("pdfplumber가 설치되지 않았습니다.")
+        logger.error("다음 명령어로 설치해주세요: pip install pdfplumber")
+        return None
 
     except Exception as e:
         logger.error(f"PDF 파싱 중 오류 발생: {str(e)}")
+        import traceback
+        logger.error(f"상세 오류: {traceback.format_exc()}")
         return None
 
 
 def extract_certificate_number(text):
     """
     텍스트에서 증명서 번호 추출
+    - PDF 텍스트에서 "제 2024-12345 호" 같은 증명서 번호를 찾아서 추출
+    - 정규식을 사용하여 특정 패턴을 찾음
     """
     pattern = r'제\s+(\d{4}-\d{5})\s+호'
     match = re.search(pattern, text)
@@ -172,48 +236,148 @@ def extract_certificate_number(text):
 
 def extract_applicant_info(text):
     """
-    텍스트에서 신청인 정보 추출 - 개선 버전
+    신청인 정보 추출기
+    - 신청인(회사나 개인) 정보를 찾아서 추출
+    - 이름/법인명, 등록번호, 주소, 전화번호를 각각 찾음
+    - 여러 가지 표기 방식을 고려하여 유연하게 정보를 추출
     """
-    name_pattern = r'성명\(법인의 경우에는 명칭\):\s*([^\n]+)'
-    alt_name_pattern = r'성명\(법인의\s+경우에는\s+명칭\):\s*([^\n]+)'
-    id_pattern = r'법인등록번호:\s*([^\n]+)'
-    address_pattern = r'주소\(Address\):\s*([^\n]+)'
-    tel_pattern = r'전화번호[^:]*:\s*([^\n]+)'
-
+    logger.info("신청인 정보 추출 시작")
     info = {}
 
-    name_match = re.search(name_pattern, text, re.DOTALL)
-    if not name_match:
-        name_match = re.search(alt_name_pattern, text, re.DOTALL)
+    # 먼저 신청인(Applicant) 섹션만 추출
+    applicant_section = None
+    applicant_patterns = [
+        # 신청인 섹션 추출 (다음 주요 섹션까지) - 더 유연하게
+        r'신청인\s*\(Applicant\)(.*?)(?:검정\s*목적|Analytical\s*Purpose|GAP\s*인증용|친환경\s*인증용)',
+        r'신청인\s*\(Applicant\)(.*?)(?:검정품목|Sample\s*Description|[가-힣]{2,}$)',
+        # 전화번호까지만 추출
+        r'신청인.*?\(Applicant\)(.*?)(?:\(Tel\.\))',
+        # 더 넓은 범위로 추출
+        r'신청인.*?\(Applicant\)(.*?)(?=검정목적|검정품목|[가-힣]{2,}\s*$)',
+    ]
 
-    if name_match:
-        info['name'] = name_match.group(1).strip()
-    else:
-        # 테이블 기반 추출 시도
-        table_match = re.search(r'성명\(법인의\s+경우에는\s+명칭\)[^:]*:\s*([^\n\r]+)', text)
-        if table_match:
-            info['name'] = table_match.group(1).strip()
+    for pattern in applicant_patterns:
+        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            applicant_section = match.group(1).strip()
+            logger.info(f"신청인 섹션 추출 성공: 길이 {len(applicant_section)}")
+            break
 
-    id_match = re.search(id_pattern, text)
-    if id_match:
-        info['id_number'] = id_match.group(1).strip()
-    else:
-        info['id_number'] = "미상"  # 기본값 제공
+    # 신청인 섹션을 찾지 못했다면 전체 텍스트에서 시도
+    if not applicant_section:
+        applicant_section = text
+        logger.warning("신청인 섹션을 찾지 못함, 전체 텍스트에서 파싱 시도")
 
-    address_match = re.search(address_pattern, text)
-    if address_match:
-        info['address'] = address_match.group(1).strip()
+    # 1. 법인명/신청인명 추출
+    name_patterns = [
+        # 가장 정확한 패턴부터
+        r'성명\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^\n\r]+)',
+        r'성명\(법인의 경우에는 명칭\)\s*[:：]?\s*([^\n\r]+)',
+        r'성명\s*\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^\n\r]+)',
+        # Name/Organization 패턴
+        r'\(Name/Organization\)\s*\n?\s*([^\n\r법인등록번호]+)',
+        # 직접적인 법인명 패턴
+        r'[\(（]주[\)）]\s*([^\n\r\t]+)',
+        r'㈜\s*([^\n\r\t]+)',
+    ]
 
-    tel_match = re.search(tel_pattern, text)
-    if tel_match:
-        info['tel'] = tel_match.group(1).strip()
-    else:
-        info['tel'] = "미제공"  # 기본값 설정
+    for pattern in name_patterns:
+        match = re.search(pattern, applicant_section, re.IGNORECASE | re.MULTILINE)
+        if match:
+            name = match.group(1).strip()
+            # 불필요한 텍스트 제거
+            name = re.sub(r'법인등록번호.*$', '', name).strip()
+            name = re.sub(r'\(Name/Organization\).*$', '', name).strip()
+            name = re.sub(r'\s+', ' ', name).strip()
+            # 최소 길이 체크 및 유효성 검사
+            if name and len(name) >= 1 and not re.match(r'^[0-9-]+$', name):
+                info['name'] = name
+                logger.info(f"신청인명 추출 성공: {name}")
+                break
+
+    # 2. 법인등록번호 추출
+    id_patterns = [
+        r'법인등록번호\s*[:：]?\s*([0-9-]+)',
+        r'I\.D\s*number\s*[:：]?\s*([0-9-]+)',
+        r'등록번호\s*[:：]?\s*([0-9-]+)',
+        # 사업자등록번호 형식 (앞에 - 있는 경우)
+        r'법인등록번호\s*[:：]?\s*(-[0-9-]+)',
+        r'I\.D\s*number\s*[:：]?\s*(-[0-9-]+)',
+    ]
+
+    for pattern in id_patterns:
+        match = re.search(pattern, applicant_section, re.IGNORECASE)
+        if match:
+            id_number = match.group(1).strip()
+            if len(id_number) >= 3:
+                info['id_number'] = id_number
+                logger.info(f"등록번호 추출 성공: {id_number}")
+                break
+
+    # 3. 주소 추출
+    address_patterns = [
+        # 주소와 전화번호가 한 줄에 있는 경우
+        r'주소\s*\(Address\)\s*[:：]?\s*([^전화번호\n\r]+?)(?:\s*전화번호|$)',
+        r'주소\s*[:：]?\s*([^전화번호\n\r]+?)(?:\s*전화번호|$)',
+        # 기존 패턴들
+        r'주소\s*\(Address\)\s*[:：]?\s*([^\n\r]+)',
+        r'주소\s*[:：]?\s*([^\n\r]+)',
+        r'Address\s*[:：]?\s*([^\n\r]+)',
+    ]
+
+    for pattern in address_patterns:
+        match = re.search(pattern, applicant_section, re.IGNORECASE | re.MULTILINE)
+        if match:
+            address = match.group(1).strip()
+            # 전화번호 부분이 포함되었다면 제거
+            address = re.sub(r'\s*전화번호.*$', '', address).strip()
+            address = re.sub(r'\s*Tel\.?.*$', '', address, flags=re.IGNORECASE).strip()
+            if address and len(address) > 5:
+                info['address'] = address
+                logger.info(f"주소 추출 성공: {address}")
+                break
+
+    # 4. 전화번호 추출
+    tel_patterns = [
+        # 주소 라인에서 전화번호 추출
+        r'주소.*?전화번호\s*[:：]?\s*([0-9-]+)',
+        r'Address.*?전화번호\s*[:：]?\s*([0-9-]+)',
+        # 독립적인 전화번호 패턴
+        r'전화번호\s*[:：]?\s*([0-9-]+)',
+        r'Tel\.?\s*[:：]?\s*([0-9-]+)',
+        r'TEL\s*[:：]?\s*([0-9-]+)',
+        # 괄호 안의 Tel 패턴
+        r'\(Tel\.?\)\s*[:：]?\s*([0-9-]+)',
+    ]
+
+    for pattern in tel_patterns:
+        match = re.search(pattern, applicant_section, re.IGNORECASE)
+        if match:
+            info['tel'] = match.group(1).strip()
+            logger.info(f"전화번호 추출 성공: {info['tel']}")
+            break
+
+    # 기본값 설정
+    if 'name' not in info:
+        info['name'] = "미상"
+    if 'id_number' not in info:
+        info['id_number'] = "미상"
+    if 'address' not in info:
+        info['address'] = "미제공"
+    if 'tel' not in info:
+        info['tel'] = "미제공"
+
+    # 최종 로깅
+    logger.info(f"최종 추출된 신청인 정보:")
+    logger.info(f"  - 이름: {info['name']}")
+    logger.info(f"  - 등록번호: {info['id_number']}")
+    logger.info(f"  - 주소: {info['address']}")
+    logger.info(f"  - 전화: {info['tel']}")
 
     return info
 
 
-def extract_test_info(text):
+def extract_certificate_test_details(text):
     """
     검정증명서 PDF에서 추출한 텍스트에서 필요한 정보를 추출 - 개선된 버전
     """
@@ -290,7 +454,10 @@ def extract_test_info(text):
 
 def extract_pesticide_results(text):
     """
-    텍스트에서 농약 검출 결과 추출 - 검정증명서 형식에 최적화 (개선된 버전)
+    텍스트에서 농약 검출 결과 추출
+    - PDF의 결과 표에서 농약별 검출 결과를 추출
+    - 농약성분명, 검출량, 잔류허용기준, 검토의견을 각각 찾음
+    - 여러 줄의 표 데이터를 하나씩 분석하여 구조화된 데이터로 변환
     """
     logger.info("농약 검출 결과 추출 시작")
 
@@ -473,7 +640,7 @@ def extract_pesticide_results(text):
 
 def verify_pesticide_results(parsing_result):
     """
-    파싱된 농약 검출 결과 검증 - 수정
+    파싱된 농약 검출 결과 검증 - 수정 (None 값 처리 강화)
     """
 
     if not parsing_result or 'pesticide_results' not in parsing_result:
@@ -505,15 +672,28 @@ def verify_pesticide_results(parsing_result):
 
     for result in parsing_result['pesticide_results']:
         pesticide_name = result['pesticide_name']
-        detection_value = decimal.Decimal(result['detection_value'])
 
-        # PDF에서 추출한 MRL 값
-        pdf_korea_mrl = decimal.Decimal(result['korea_mrl']) if result['korea_mrl'] else None
+        # detection_value를 안전하게 처리
+        try:
+            detection_value = decimal.Decimal(result['detection_value'])
+        except (ValueError, TypeError, decimal.InvalidOperation):
+            logger.error(f"검출량 값 변환 오류: {result['detection_value']}")
+            continue
+
+        # PDF에서 추출한 MRL 값 - None 체크 강화
+        pdf_korea_mrl = None
+        if result.get('korea_mrl') is not None:
+            try:
+                pdf_korea_mrl = decimal.Decimal(result['korea_mrl'])
+            except (ValueError, TypeError, decimal.InvalidOperation):
+                logger.warning(f"PDF MRL 값 변환 실패: {result['korea_mrl']}")
+                pdf_korea_mrl = None
 
         # 데이터베이스에서 정보 조회
         db_pesticide_info = None
         standard_pesticide_name = None
         db_korea_mrl = None
+        db_korea_mrl_display = ""
         pesticide_name_match = False
 
         try:
@@ -532,45 +712,36 @@ def verify_pesticide_results(parsing_result):
                     # 직접 매칭 시도
                     direct_match = PesticideLimit.objects.filter(
                         pesticide_name_en__iexact=standard_pesticide_name,
-                        food_name__iexact = mapped_sample_description  # 매핑된 이름 사용
+                        food_name__iexact=mapped_sample_description
                     ).first()
 
-                    # 기존 내부 API 호출 방식 부분을 제거하고 직접 API 호출 방식으로 변경
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
-                        # 여기에 db_korea_mrl_display 설정 코드 추가
                         formatted_value = f"{db_korea_mrl:.1f}"
                         db_korea_mrl_display = formatted_value
                         logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
+
                     # 직접 매칭이 없는 경우에만 API를 호출하여 값을 가져옴
                     if not direct_match:
                         try:
-                            # 현재 서버의 API 엔드포인트를 호출
                             import requests
                             from django.conf import settings
 
-                            # 서버 주소와 포트 설정
                             host = 'localhost'
-                            port = '8000'  # Django 서버 포트
+                            port = '8000'
+                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={mapped_sample_description}"
 
-                            # API 엔드포인트 URL 구성
-                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={mapped_sample_description}"  # 매핑된 이름 사용
-
-                            # API 호출
                             response = requests.get(api_url)
 
                             if response.status_code == 200:
                                 data = response.json()
                                 if data and len(data) > 0:
-                                    # API 응답에서 값 추출
                                     db_korea_mrl = decimal.Decimal(data[0].get('max_residue_limit', 0))
                                     db_korea_mrl_text = data[0].get('food_name', '')
 
-                                    # 조건 코드 정보 추출 (T 등 특수 기호)
                                     condition_code = data[0].get('condition_code_symbol', '')
                                     condition_desc = data[0].get('condition_code_description', '')
 
-                                    # 완전한 형식의 허용기준 텍스트 구성
                                     if condition_code:
                                         formatted_value = f"{db_korea_mrl:.1f}"
                                         db_korea_mrl_display = f"{db_korea_mrl}{condition_code}"
@@ -581,97 +752,88 @@ def verify_pesticide_results(parsing_result):
                                     logger.info(
                                         f"API 호출 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
                                 else:
-                                    # 결과가 없으면 PDF에서 추출한 값을 사용 (수정된 부분)
+                                    # API 결과가 없으면 PDF 값 또는 PLS 기본값 사용
                                     if pdf_korea_mrl is not None:
                                         db_korea_mrl = pdf_korea_mrl
-                                        db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                        db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
                                         logger.info(f"API 결과 없음: PDF 값 사용 - {db_korea_mrl_display}")
                                     else:
-                                        # PDF에도 없는 경우 PLS 기본값 사용
                                         db_korea_mrl = decimal.Decimal('0.01')
                                         db_korea_mrl_display = "PLS 0.01"
                                         logger.info(f"API 결과 없음, PDF 값도 없음: PLS 적용")
                             else:
-                                # API 호출 실패 시 PDF 값 사용
+                                # API 호출 실패 시 처리
                                 if pdf_korea_mrl is not None:
                                     db_korea_mrl = pdf_korea_mrl
-                                    db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                    db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
                                     logger.info(f"API 호출 실패: PDF 값 사용 - {db_korea_mrl_display}")
                                 else:
-                                    logger.error(f"API 호출 실패({response.status_code}), PDF 값도 없음")
+                                    db_korea_mrl = decimal.Decimal('0.01')
+                                    db_korea_mrl_display = "PLS 0.01"
+                                    logger.error(f"API 호출 실패({response.status_code}), PDF 값도 없음: PLS 적용")
                         except Exception as api_error:
-                            # 예외 발생 시 PDF 값 사용
+                            # API 예외 발생 시 처리
                             if pdf_korea_mrl is not None:
                                 db_korea_mrl = pdf_korea_mrl
-                                db_korea_mrl_display = result.get('korea_mrl_text', '')
+                                db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
                                 logger.error(f"API 호출 오류({str(api_error)}): PDF 값 사용 - {db_korea_mrl_display}")
                             else:
-                                logger.error(f"API 호출 오류({str(api_error)}), PDF 값도 없음")
+                                db_korea_mrl = decimal.Decimal('0.01')
+                                db_korea_mrl_display = "PLS 0.01"
+                                logger.error(f"API 호출 오류({str(api_error)}), PDF 값도 없음: PLS 적용")
             else:
-                # 유사한 이름 검색 (첫 4글자로 유사 검색)
-                similar_pesticides = PesticideLimit.objects.filter(
-                    pesticide_name_en__icontains=pesticide_name[:4]
-                ).values('pesticide_name_en', 'pesticide_name_kr').distinct()
+                # 농약성분명을 찾지 못한 경우
+                standard_pesticide_name = pesticide_name
+                pesticide_name_match = False
 
-                if similar_pesticides.exists():
-                    standard_pesticide_name = similar_pesticides.first()['pesticide_name_en']
-                    pesticide_name_match = pesticide_name.lower() == standard_pesticide_name.lower()
-                    logger.info(f"유사 농약성분명: {pesticide_name} → {standard_pesticide_name}")
-
-                    # 유사한 농약성분에 대한 MRL 값 조회
-                    if sample_description:
-                        similar_limit = PesticideLimit.objects.filter(
-                            pesticide_name_en__iexact=standard_pesticide_name,
-                            food_name__icontains=sample_description
-                        ).first()
-
-                        if similar_limit:
-                            db_korea_mrl = similar_limit.max_residue_limit
-                            logger.info(f"유사 농약 MRL 값: {db_korea_mrl}")
-                        elif pdf_korea_mrl is not None:
-                            # 유사 매칭 실패 시 PDF에서 추출한 값 사용
-                            db_korea_mrl = pdf_korea_mrl
-                            logger.info(f"유사 농약 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+                # PDF 값이 있으면 사용, 없으면 PLS
+                if pdf_korea_mrl is not None:
+                    db_korea_mrl = pdf_korea_mrl
+                    db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                    logger.info(f"농약성분명 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
                 else:
-                    standard_pesticide_name = pesticide_name
-                    pesticide_name_match = False
+                    db_korea_mrl = decimal.Decimal('0.01')
+                    db_korea_mrl_display = "PLS 0.01"
+                    logger.info(f"농약성분명 매칭 실패, PLS 적용")
 
-                    # 매칭 실패 시 PDF에서 추출한 값 사용
-                    if pdf_korea_mrl is not None:
-                        db_korea_mrl = pdf_korea_mrl
-                        logger.info(f"매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
         except Exception as e:
             logger.error(f"검증 중 DB 조회 오류: {str(e)}")
             standard_pesticide_name = pesticide_name
             pesticide_name_match = False
 
-            # 오류 발생 시에도 PDF 값 사용
+            # 오류 발생 시 안전한 기본값 설정
             if pdf_korea_mrl is not None:
                 db_korea_mrl = pdf_korea_mrl
+                db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
                 logger.info(f"오류 발생, PDF 값 사용: {pdf_korea_mrl}")
+            else:
+                db_korea_mrl = decimal.Decimal('0.01')
+                db_korea_mrl_display = "PLS 0.01"
+                logger.info(f"오류 발생, PLS 적용")
 
-        # 친환경 검정인 경우 (친환경인증용)
+        # 친환경 검정인 경우 처리 - None 체크 추가
         if is_eco_friendly:
-            # 친환경 검정의 경우 검출량이 0.01 미만이어야 적합
             eco_friendly_threshold = decimal.Decimal('0.01')
             pdf_calculated_result = '적합' if detection_value < eco_friendly_threshold else '부적합'
-            logger.info(
-                f"친환경 기준 적용: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}, 결과: {pdf_calculated_result}")
+            logger.info(f"친환경 기준 적용: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}, 결과: {pdf_calculated_result}")
         else:
-            # 일반 검정의 경우 MRL 값 사용
-            # PDF MRL로 적합/부적합 계산
-            pdf_calculated_result = '적합' if detection_value <= pdf_korea_mrl else '부적합'
+            # 일반 검정의 경우 - None 체크 강화
+            if pdf_korea_mrl is not None:
+                pdf_calculated_result = '적합' if detection_value <= pdf_korea_mrl else '부적합'
+            else:
+                pdf_calculated_result = '확인불가'
+                logger.warning("PDF MRL 값이 없어 PDF 계산 결과를 확인할 수 없음")
 
-        # DB MRL로 적합/부적합 계산
+        # DB MRL로 적합/부적합 계산 - None 체크 강화
         if db_korea_mrl is not None:
             db_calculated_result = '적합' if detection_value <= db_korea_mrl else '부적합'
         else:
-            # 최후의 수단으로 PDF에서 추출한 값 사용
-            db_korea_mrl = pdf_korea_mrl
-            db_calculated_result = pdf_calculated_result if pdf_korea_mrl is not None else '확인불가'
+            db_calculated_result = '확인불가'
+            logger.warning("DB MRL 값이 없어 DB 계산 결과를 확인할 수 없음")
 
         # PDF의 검토의견과 계산된 결과 비교
-        is_pdf_consistent = (pdf_calculated_result == result['result_opinion'])
+        pdf_result = result.get('result_opinion', '확인불가')
+        is_pdf_consistent = (pdf_calculated_result == pdf_result) if pdf_calculated_result != '확인불가' else False
 
         verification_results.append({
             'pesticide_name': pesticide_name,
@@ -681,14 +843,14 @@ def verify_pesticide_results(parsing_result):
             'pdf_korea_mrl': pdf_korea_mrl,
             'pdf_korea_mrl_text': result.get('korea_mrl_text', ''),
             'db_korea_mrl': db_korea_mrl,
-            'db_korea_mrl_display': db_korea_mrl_display if 'db_korea_mrl_display' in locals() else '',  # 표시용 문자열
+            'db_korea_mrl_display': db_korea_mrl_display,
             'export_country': result.get('export_country'),
             'export_mrl': result.get('export_mrl'),
-            'pdf_result': result['result_opinion'],
+            'pdf_result': pdf_result,
             'pdf_calculated_result': pdf_calculated_result,
             'db_calculated_result': db_calculated_result,
             'is_pdf_consistent': is_pdf_consistent,
-            'is_eco_friendly': is_eco_friendly,  # 친환경 여부 추가
+            'is_eco_friendly': is_eco_friendly,
         })
 
     return verification_results
@@ -696,7 +858,11 @@ def verify_pesticide_results(parsing_result):
 
 def save_certificate_data(parsing_result, verification_result, pdf_file):
     """
-    파싱 및 검증 결과를 데이터베이스에 저장
+    파싱 및 검증 결과를 데이터베이스에 저장 관리자
+    - 추출하고 검증한 모든 정보를 데이터베이스에 저장
+    - 검정증명서 기본 정보를 CertificateOfAnalysis 테이블에 저장
+    - 농약별 검출 결과를 PesticideResult 테이블에 저장
+    - 원본 PDF 파일도 함께 저장
     """
     try:
         # 파일 정보 로깅 추가
@@ -762,3 +928,4 @@ def save_certificate_data(parsing_result, verification_result, pdf_file):
     except Exception as e:
         logger.error(f"검정증명서 저장 중 오류 발생: {str(e)}")
         raise
+
