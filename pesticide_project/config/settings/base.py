@@ -146,3 +146,52 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')    # Gmail 주소
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')    # Gmail 앱 비밀번호 <-- https://myaccount.google.com/apppasswords 여기서생성
 DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER')
+
+# Logging settings - PDF 파싱 라이브러리 로그 완전 제거
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        # pdfminer 관련 모든 로거 비활성화
+        'pdfminer': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfminer.pdfpage': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfminer.pdfinterp': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfminer.converter': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfminer.layout': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfminer.cmapdb': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+        'pdfplumber': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+    },
+}

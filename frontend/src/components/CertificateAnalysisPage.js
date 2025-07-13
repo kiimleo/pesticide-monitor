@@ -300,11 +300,12 @@ const PesticideResultsVerification = ({ results }) => {
             <TableBody>
               {results.map((result, index) => {
                 // 검토의견이 비어있는 경우 판정여부는 성분명 검증과 잔류허용기준 일치 여부만 확인
+                // 검정증명서 검증결과: 성분명검증 + AI판정 모두 성공시만 체크
                 const verificationStatus = hasEmptyReviewOpinions
                   ? (result.pesticide_name_match && 
                      (result.pdf_korea_mrl === result.db_korea_mrl || 
                       (parseFloat(result.pdf_korea_mrl) === parseFloat(result.db_korea_mrl))))
-                  : result.is_pdf_consistent;
+                  : (result.pesticide_name_match && result.is_pdf_consistent);
                 
                 return (
                   <TableRow 
@@ -360,8 +361,8 @@ const PesticideResultsVerification = ({ results }) => {
                     {!hasEmptyReviewOpinions && (
                       <TableCell align="center">
                         <Chip 
-                          label={result.pdf_calculated_result} 
-                          color={result.pdf_calculated_result === '적합' ? 'success' : 'error'}
+                          label={result.is_pdf_consistent ? '적합' : '부적합'} 
+                          color={result.is_pdf_consistent ? 'success' : 'error'}
                           size="small"
                         />
                       </TableCell>
@@ -412,9 +413,9 @@ const VerificationSummary = ({ results }) => {
        parseFloat(result.pdf_korea_mrl) !== parseFloat(result.db_korea_mrl))
     ).length;
   } else {
-    // 기존 로직: 검토의견이 있는 경우 is_pdf_consistent 사용
-    resultsConsistency = results.every(r => r.is_pdf_consistent);
-    inconsistentResultsCount = results.filter(r => !r.is_pdf_consistent).length;
+    // 수정된 로직: 검토의견이 있는 경우 성분명검증 + AI판정 모두 확인
+    resultsConsistency = results.every(r => r.pesticide_name_match && r.is_pdf_consistent);
+    inconsistentResultsCount = results.filter(r => !r.pesticide_name_match || !r.is_pdf_consistent).length;
   }
   
   return (

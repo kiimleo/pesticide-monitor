@@ -17,6 +17,44 @@ from api.serializers import CertificateOfAnalysisSerializer, PesticideResultSeri
 logger = logging.getLogger(__name__)
 
 
+def calculate_similarity(str1, str2):
+    """
+    두 문자열 간의 유사도를 계산 (Levenshtein 거리 기반)
+    반환값: 0.0 (완전히 다름) ~ 1.0 (완전히 같음)
+    """
+    if str1 == str2:
+        return 1.0
+    
+    # Levenshtein 거리 계산
+    len1, len2 = len(str1), len(str2)
+    if len1 == 0:
+        return 0.0 if len2 > 0 else 1.0
+    if len2 == 0:
+        return 0.0
+    
+    # DP 테이블 생성
+    dp = [[0] * (len2 + 1) for _ in range(len1 + 1)]
+    
+    # 초기화
+    for i in range(len1 + 1):
+        dp[i][0] = i
+    for j in range(len2 + 1):
+        dp[0][j] = j
+    
+    # DP 계산
+    for i in range(1, len1 + 1):
+        for j in range(1, len2 + 1):
+            if str1[i-1] == str2[j-1]:
+                dp[i][j] = dp[i-1][j-1]
+            else:
+                dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+    
+    # 유사도 계산 (0.0 ~ 1.0)
+    max_len = max(len1, len2)
+    similarity = (max_len - dp[len1][len2]) / max_len
+    return similarity
+
+
 @csrf_exempt
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
@@ -142,6 +180,15 @@ def parse_certificate_pdf(pdf_file):
     try:
         # pdfplumber로 PDF 텍스트 추출
         import pdfplumber
+        import logging
+        
+        # pdfminer 로그 완전 비활성화
+        logging.getLogger('pdfminer').setLevel(logging.CRITICAL)
+        logging.getLogger('pdfplumber').setLevel(logging.CRITICAL)
+        logging.getLogger('pdfminer.pdfpage').setLevel(logging.CRITICAL)
+        logging.getLogger('pdfminer.pdfinterp').setLevel(logging.CRITICAL)
+        logging.getLogger('pdfminer.converter').setLevel(logging.CRITICAL)
+        logging.getLogger('pdfminer.layout').setLevel(logging.CRITICAL)
 
         logger.info("pdfplumber로 PDF 텍스트 추출 시작")
         text = ""
@@ -406,6 +453,12 @@ def extract_certificate_test_details(text):
             if value:
                 # 괄호로 둘러싸인 레이블 제거 (예: "(Sample Description)모과" -> "모과")
                 cleaned_value = re.sub(r'\([^)]*\)', '', value).strip()
+                
+                # #N/A 부분 제거 (특히 analytical_purpose에서)
+                if '#N/A' in cleaned_value:
+                    cleaned_value = re.sub(r'\s*#N/A\s*', '', cleaned_value).strip()
+                    logger.info(f"'{field}'에서 #N/A 제거됨")
+                
                 results[field] = cleaned_value
                 logger.info(f"'{field}' 추출 성공: {results[field]}")
             else:
@@ -483,35 +536,129 @@ def extract_pesticide_results(text):
         # 전체 텍스트에서 직접 농약 결과 행 패턴 검색
         logger.warning("결과 테이블 매칭 실패, 전체 텍스트에서 농약 결과 검색")
 
-        # 농약 결과 행을 직접 찾는 패턴
-        direct_row_pattern = r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]*?)\s+([^\n\r]+?)$'
+        # 주석 부분 제외 - Article이 포함된 주석 섹션을 찾아서 제외
+        text_lines = text.split('\n')
+        filtered_lines = []
+        skip_lines = False
+        
+        for line in text_lines:
+            line_stripped = line.strip()
+            
+            # 농수산물 품질관리법 주석 시작 감지
+            if '농수산물' in line_stripped and '품질관리법' in line_stripped:
+                skip_lines = True
+                logger.info(f"주석 섹션 시작 감지, 라인 스킵: {line_stripped}")
+                continue
+                
+            # 주석 섹션이 끝나는 조건들
+            if skip_lines:
+                # 날짜나 서명 섹션이 나오면 주석 끝
+                if re.search(r'\d{4}년\s*\d{2}월\s*\d{2}일', line_stripped) or \
+                   '대표이사' in line_stripped or \
+                   '확인' in line_stripped:
+                    skip_lines = False
+                    logger.info(f"주석 섹션 종료 감지: {line_stripped}")
+                continue
+                
+            # 스킵하지 않는 라인만 추가
+            if not skip_lines:
+                filtered_lines.append(line)
+
+        # 농약 결과 행을 직접 찾는 패턴 (기본 농약명만 매칭)
+        direct_row_pattern = r'(?:Analytical\s+|Results\s+)?([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r]*?)\s+([^\n\r]+?)$'
         results = []
 
-        for line in text.split('\n'):
-            # 각 줄마다 농약 검출 결과 패턴 검색
-            match = re.search(direct_row_pattern, line.strip())
+        for line in filtered_lines:
+            line_stripped = line.strip()
+            
+            # 빈 줄이나 특정 키워드가 포함된 줄은 스킵 (단, 농약성분이 포함된 라인은 예외)
+            if not line_stripped:
+                continue
+                
+            # 농약성분이 포함된 라인인지 확인 (영문 + 숫자 패턴)
+            has_pesticide_pattern = re.search(r'[A-Za-z][\w-]+\s+[\d.]+', line_stripped)
+            
+            # 농약성분이 없는 라인에서만 키워드 스킵 적용
+            if not has_pesticide_pattern and \
+               any(keyword in line_stripped for keyword in ['Article', '농수산물', '품질관리법', 'Agricultural', 'fishery']):
+                continue
+                
+            # 농약 검출 결과 패턴 검색
+            match = re.search(direct_row_pattern, line_stripped)
             if match and re.match(r'[A-Za-z]', match.group(1)):  # 첫 글자가 영문인지 확인
                 try:
+                    # 기본 농약명과 검출량
                     pesticide_name = match.group(1).strip()
                     detection_value = match.group(2).strip()
+                    rest_of_line = match.group(3).strip() + " " + match.group(4).strip()
+                    
+                    # 중복된 검출량이 있는지 확인 (연구원 실수 감지)
+                    if rest_of_line.startswith(detection_value):
+                        # 중복 검출량 발견 → 농약명에 검출량이 포함되었을 가능성
+                        corrected_pesticide_name = f"{pesticide_name} {detection_value}"
+                        logger.info(f"⚠️ 중복 검출량 감지: 농약명을 '{pesticide_name}' → '{corrected_pesticide_name}'로 수정")
+                        pesticide_name = corrected_pesticide_name
+                        
+                        # rest_of_line에서 중복된 검출량 제거
+                        rest_of_line = rest_of_line[len(detection_value):].strip()
+                    
+                    # 표준 농약명 추출 (DB 조회용)
+                    standard_pesticide_name_for_db = pesticide_name
+                    if re.search(r'\d', pesticide_name):
+                        # DB 조회를 위해서만 숫자 제거 (소수점 포함 숫자 완전 제거)
+                        standard_pesticide_name_for_db = re.sub(r'\s+[\d.]+\s*$', '', pesticide_name).strip()
+                        logger.info(f"DB 조회용 농약명: '{pesticide_name}' → '{standard_pesticide_name_for_db}' (표시명은 '{pesticide_name}' 유지)")
+
+                    # 디버깅: 매칭된 그룹들 출력
+                    logger.info(f"패턴 매칭 성공 - 라인: {line_stripped}")
+                    logger.info(f"  - group(1): '{match.group(1)}' → 최종 농약명: '{pesticide_name}'")
+                    logger.info(f"  - group(2): '{match.group(2)}'")
+                    logger.info(f"  - group(3): '{match.group(3)}'")
+                    logger.info(f"  - group(4): '{match.group(4)}'")
 
                     # MRL 값과 검토의견 추출 시도
-                    rest_of_line = match.group(3).strip() + " " + match.group(4).strip()
+                    logger.info(f"  - rest_of_line: '{rest_of_line}'")
 
-                    # MRL 값 찾기
-                    mrl_match = re.search(r'([\d.]+)', rest_of_line)
-                    korea_mrl = mrl_match.group(1) if mrl_match else None
-                    korea_mrl_text = korea_mrl if korea_mrl else "-"
+                    # MRL 값 찾기 (기호 포함, 중복 검출량 제외)
+                    mrl_matches = re.findall(r'([\d.]+\s*[†\*]?)', rest_of_line)
+                    
+                    # 검출량과 동일한 값 제외하고 MRL 찾기
+                    korea_mrl_full = None
+                    for mrl_candidate in mrl_matches:
+                        mrl_value = re.search(r'([\d.]+)', mrl_candidate).group(1)
+                        # 검출량과 다른 값만 MRL로 인정
+                        if mrl_value != detection_value:
+                            korea_mrl_full = mrl_candidate.strip()
+                            break
+                    
+                    if korea_mrl_full:
+                        # 숫자만 추출 (계산용)
+                        korea_mrl = re.search(r'([\d.]+)', korea_mrl_full).group(1)
+                        # 전체 텍스트 유지 (표시용)
+                        korea_mrl_text = korea_mrl_full
+                        logger.info(f"  - MRL 값 선택: '{korea_mrl_full}' (검출량 '{detection_value}' 제외)")
+                    else:
+                        korea_mrl = None
+                        korea_mrl_text = "-"
+                        logger.info(f"  - MRL 값을 찾을 수 없음 (검출량과 구분 불가)")
 
-                    # 검토의견 찾기 (일반적으로 '적합' 또는 '-' 등)
-                    opinion_match = re.search(r'(적합|부적합|-)', rest_of_line)
-                    result_opinion = opinion_match.group(1) if opinion_match else "-"
+                    # 검토의견 찾기 (완전한 단어 매칭)
+                    if '부적합' in rest_of_line:
+                        result_opinion = '부적합'
+                    elif '적합' in rest_of_line:
+                        result_opinion = '적합'
+                    elif re.search(r'\s-\s|^-$|^-\s|\s-$', rest_of_line):  # 독립적인 - 기호만
+                        result_opinion = '-'
+                    else:
+                        result_opinion = '-'
+                    logger.info(f"  - 검토의견 검색 결과: '{result_opinion}' (from '{rest_of_line}')")
 
                     logger.info(
                         f"농약 결과 발견: {pesticide_name}, 검출량: {detection_value}, MRL 값: {korea_mrl}, 검토의견: {result_opinion}")
 
                     results.append({
-                        'pesticide_name': pesticide_name,
+                        'pesticide_name': pesticide_name,  # 연구원이 기록한 원본 농약명
+                        'standard_pesticide_name_for_db': standard_pesticide_name_for_db,  # DB 조회용 농약명
                         'detection_value': detection_value,
                         'korea_mrl': korea_mrl,
                         'korea_mrl_text': korea_mrl_text,
@@ -527,13 +674,16 @@ def extract_pesticide_results(text):
 
     # 기존 형식에 맞는 행 패턴
     row_patterns = [
-        # 기존 패턴 1: 농약명 검출량 MRL값 - 적합
+        # 패턴 1: (Analytical 등이 앞에 있는 경우) - Mefentrifluconazole 케이스
+        r'(?:Analytical\s+|Results\s+)?([A-Za-z][\w-]+)\s+([\d.]+)\s+([\d.]+)\s*[†\*]?\s*-\s+(적합|부적합)',
+        
+        # 패턴 2: 기존 패턴 1 - 농약명 검출량 MRL값 - 적합
         r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)\s+-\s+(\S+)',
 
-        # 기존 패턴 2: 농약명 검출량 MRL값 검토의견
+        # 패턴 3: 기존 패턴 2 - 농약명 검출량 MRL값 검토의견
         r'([A-Za-z][\w-]+)\s+([\d.]+)\s+([^\n\r-]+)\s+(\S+)',
 
-        # 새 패턴: 새로운 형식 (농약명 검출량 MRL값 - - -)
+        # 패턴 4: 새로운 형식 (농약명 검출량 MRL값 - - -)
         r'([A-Za-z][\w-]+)\s+([\d.]+)\s+(-)\s+(-)\s+(-)'
     ]
 
@@ -548,13 +698,16 @@ def extract_pesticide_results(text):
                 detection_value = match.group(2).strip()
 
                 # 패턴에 따라 다른 그룹에서 값을 추출
-                if pattern == row_patterns[0]:  # 첫 번째 패턴: 농약명 검출량 MRL값 - 적합
+                if pattern == row_patterns[0]:  # 첫 번째 패턴: (Analytical) 농약명 검출량 MRL값 - 적합
                     korea_mrl_raw = match.group(3).strip()
                     result_opinion = match.group(4).strip()
-                elif pattern == row_patterns[1]:  # 두 번째 패턴: 농약명 검출량 MRL값 검토의견
+                elif pattern == row_patterns[1]:  # 두 번째 패턴: 농약명 검출량 MRL값 - 적합
                     korea_mrl_raw = match.group(3).strip()
                     result_opinion = match.group(4).strip()
-                else:  # 세 번째 패턴: 농약명 검출량 - - -
+                elif pattern == row_patterns[2]:  # 세 번째 패턴: 농약명 검출량 MRL값 검토의견
+                    korea_mrl_raw = match.group(3).strip()
+                    result_opinion = match.group(4).strip()
+                else:  # 네 번째 패턴: 농약명 검출량 - - -
                     korea_mrl_raw = "-"
                     result_opinion = "-"
 
@@ -671,7 +824,10 @@ def verify_pesticide_results(parsing_result):
     logger.info(f"검정 품목: {sample_description}")
 
     for result in parsing_result['pesticide_results']:
-        pesticide_name = result['pesticide_name']
+        pesticide_name = result['pesticide_name']  # 연구원이 기록한 원본 농약명 (표시용)
+        pesticide_name_for_db = result.get('standard_pesticide_name_for_db', pesticide_name)  # DB 조회용
+        
+        logger.info(f"🔍 [표준명 추적 시작] 원본 농약명: '{pesticide_name}', DB 조회용: '{pesticide_name_for_db}'")
 
         # detection_value를 안전하게 처리
         try:
@@ -697,15 +853,20 @@ def verify_pesticide_results(parsing_result):
         pesticide_name_match = False
 
         try:
-            # 1. 농약성분명으로 표준명 찾기
+            # 1. 농약성분명으로 표준명 찾기 (DB 조회용 농약명 사용)
+            logger.info(f"📊 [DB 조회] 검색어: '{pesticide_name_for_db}'")
             pesticide_info = PesticideLimit.objects.filter(
-                pesticide_name_en__iexact=pesticide_name
+                pesticide_name_en__iexact=pesticide_name_for_db
             ).first()
 
             if pesticide_info:
                 standard_pesticide_name = pesticide_info.pesticide_name_en
+                # 원본 농약명과 표준명을 비교하여 매칭 여부 결정
                 pesticide_name_match = pesticide_name.lower() == standard_pesticide_name.lower()
-                logger.info(f"농약성분명 찾음: {pesticide_name} → {standard_pesticide_name}")
+                logger.info(f"✅ [DB 조회 성공] '{pesticide_name_for_db}' → 표준명: '{standard_pesticide_name}'")
+                logger.info(f"🔄 [매칭 검사] 원본: '{pesticide_name}' vs 표준명: '{standard_pesticide_name}' = {pesticide_name_match}")
+                if not pesticide_name_match:
+                    logger.info(f"⚠️ [불일치 감지] 기록명: '{pesticide_name}' vs 표준명: '{standard_pesticide_name}'")
 
                 # 2. 검정 품목을 기반으로 잔류허용기준 찾기
                 if sample_description:
@@ -717,9 +878,10 @@ def verify_pesticide_results(parsing_result):
 
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
+                        condition_code = direct_match.condition_code.code if direct_match.condition_code else ''
                         formatted_value = f"{db_korea_mrl:.1f}"
-                        db_korea_mrl_display = formatted_value
-                        logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl}")
+                        db_korea_mrl_display = f"{formatted_value}{condition_code}"
+                        logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
 
                     # 직접 매칭이 없는 경우에만 API를 호출하여 값을 가져옴
                     if not direct_match:
@@ -744,10 +906,10 @@ def verify_pesticide_results(parsing_result):
 
                                     if condition_code:
                                         formatted_value = f"{db_korea_mrl:.1f}"
-                                        db_korea_mrl_display = f"{db_korea_mrl}{condition_code}"
+                                        db_korea_mrl_display = f"{formatted_value}{condition_code}"
                                     else:
                                         formatted_value = f"{db_korea_mrl:.1f}"
-                                        db_korea_mrl_display = f"{db_korea_mrl}"
+                                        db_korea_mrl_display = formatted_value
 
                                     logger.info(
                                         f"API 호출 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
@@ -782,9 +944,30 @@ def verify_pesticide_results(parsing_result):
                                 db_korea_mrl_display = "PLS 0.01"
                                 logger.error(f"API 호출 오류({str(api_error)}), PDF 값도 없음: PLS 적용")
             else:
-                # 농약성분명을 찾지 못한 경우
-                standard_pesticide_name = pesticide_name
-                pesticide_name_match = False
+                # 농약성분명을 찾지 못한 경우 - 퍼지 매칭 시도
+                logger.info(f"❌ [DB 조회 실패] '{pesticide_name_for_db}' 정확한 매칭 없음")
+                logger.info(f"🔍 [퍼지 매칭 시작] 유사 농약명 검색 중...")
+                
+                # 모든 농약명을 가져와서 유사도 검사
+                all_pesticides = PesticideLimit.objects.values_list('pesticide_name_en', flat=True).distinct()
+                best_match = None
+                highest_similarity = 0
+                
+                for std_name in all_pesticides:
+                    # 단순 문자열 유사도 계산 (Levenshtein 거리 기반)
+                    similarity = calculate_similarity(pesticide_name_for_db.lower(), std_name.lower())
+                    if similarity > highest_similarity and similarity > 0.8:  # 80% 이상 유사
+                        highest_similarity = similarity
+                        best_match = std_name
+                
+                if best_match:
+                    standard_pesticide_name = best_match
+                    pesticide_name_match = False  # 정확한 매칭은 아니므로 False
+                    logger.info(f"✨ [퍼지 매칭 성공] '{pesticide_name_for_db}' → 표준명: '{best_match}' (유사도: {highest_similarity:.2f})")
+                else:
+                    standard_pesticide_name = pesticide_name_for_db  # DB 조회용 농약명 사용 (숫자 제거된 버전)
+                    pesticide_name_match = False
+                    logger.info(f"💔 [퍼지 매칭 실패] 유사 농약명 찾지 못함, 기본값 사용: '{pesticide_name_for_db}'")
 
                 # PDF 값이 있으면 사용, 없으면 PLS
                 if pdf_korea_mrl is not None:
@@ -798,8 +981,11 @@ def verify_pesticide_results(parsing_result):
 
         except Exception as e:
             logger.error(f"검증 중 DB 조회 오류: {str(e)}")
-            standard_pesticide_name = pesticide_name
-            pesticide_name_match = False
+            # 이미 설정된 값들이 있으면 유지, 없으면 기본값 설정
+            if 'standard_pesticide_name' not in locals():
+                standard_pesticide_name = pesticide_name
+            if 'pesticide_name_match' not in locals():
+                pesticide_name_match = False
 
             # 오류 발생 시 안전한 기본값 설정
             if pdf_korea_mrl is not None:
@@ -833,8 +1019,30 @@ def verify_pesticide_results(parsing_result):
 
         # PDF의 검토의견과 계산된 결과 비교
         pdf_result = result.get('result_opinion', '확인불가')
-        is_pdf_consistent = (pdf_calculated_result == pdf_result) if pdf_calculated_result != '확인불가' else False
+        
+        # AI 판정 로직: PDF 검토의견 일치 + MRL 값 정확성 검증
+        if pdf_calculated_result == '확인불가':
+            is_pdf_consistent = False
+        else:
+            # 1. 기본적으로 PDF 계산결과와 PDF 검토의견이 일치하는지 확인
+            basic_consistency = (pdf_calculated_result == pdf_result)
+            
+            # 2. 연구원이 기록한 MRL과 표준 MRL이 일치하는지 확인 (연구원 실수 감지)
+            mrl_accuracy = True
+            if pdf_korea_mrl is not None and db_korea_mrl is not None:
+                # MRL 값이 다르면 연구원 실수로 판단
+                if abs(float(pdf_korea_mrl) - float(db_korea_mrl)) > 0.001:  # 0.001 허용오차
+                    mrl_accuracy = False
+                    logger.warning(f"🚨 MRL 불일치 감지: PDF={pdf_korea_mrl}, DB={db_korea_mrl} → AI 판정 부적합")
+            
+            # 3. 최종 AI 판정: 두 조건 모두 만족해야 함
+            is_pdf_consistent = basic_consistency and mrl_accuracy
+            
+            logger.info(f"📊 AI 판정 상세: PDF 일치={basic_consistency}, MRL 정확성={mrl_accuracy}, 최종={is_pdf_consistent}")
 
+        # 최종 결과 로깅
+        logger.info(f"🎯 [최종 결과] 원본: '{pesticide_name}' → 표준명: '{standard_pesticide_name}' (매칭: {pesticide_name_match})")
+        
         verification_results.append({
             'pesticide_name': pesticide_name,
             'standard_pesticide_name': standard_pesticide_name,
