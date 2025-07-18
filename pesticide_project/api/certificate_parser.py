@@ -879,8 +879,15 @@ def verify_pesticide_results(parsing_result):
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
                         condition_code = direct_match.condition_code.code if direct_match.condition_code else ''
-                        formatted_value = f"{db_korea_mrl:.1f}"
-                        db_korea_mrl_display = f"{formatted_value}{condition_code}"
+                        # 소수점 이하 불필요한 0 제거하여 표시
+                        if db_korea_mrl == int(db_korea_mrl):
+                            formatted_value = str(int(db_korea_mrl))
+                        else:
+                            formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                        if condition_code:
+                            db_korea_mrl_display = f"{formatted_value}({condition_code})"
+                        else:
+                            db_korea_mrl_display = formatted_value
                         logger.info(f"직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
 
                     # 직접 매칭이 없는 경우에만 API를 호출하여 값을 가져옴
@@ -905,10 +912,18 @@ def verify_pesticide_results(parsing_result):
                                     condition_desc = data[0].get('condition_code_description', '')
 
                                     if condition_code:
-                                        formatted_value = f"{db_korea_mrl:.1f}"
-                                        db_korea_mrl_display = f"{formatted_value}{condition_code}"
+                                        # 소수점 이하 불필요한 0 제거하여 표시
+                                        if db_korea_mrl == int(db_korea_mrl):
+                                            formatted_value = str(int(db_korea_mrl))
+                                        else:
+                                            formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                                        db_korea_mrl_display = f"{formatted_value}({condition_code})"
                                     else:
-                                        formatted_value = f"{db_korea_mrl:.1f}"
+                                        # 소수점 이하 불필요한 0 제거하여 표시
+                                        if db_korea_mrl == int(db_korea_mrl):
+                                            formatted_value = str(int(db_korea_mrl))
+                                        else:
+                                            formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
                                         db_korea_mrl_display = formatted_value
 
                                     logger.info(
@@ -944,40 +959,94 @@ def verify_pesticide_results(parsing_result):
                                 db_korea_mrl_display = "PLS 0.01"
                                 logger.error(f"API 호출 오류({str(api_error)}), PDF 값도 없음: PLS 적용")
             else:
-                # 농약성분명을 찾지 못한 경우 - 퍼지 매칭 시도
+                # 농약성분명을 찾지 못한 경우 - 부분 매칭 및 퍼지 매칭 시도
                 logger.info(f"❌ [DB 조회 실패] '{pesticide_name_for_db}' 정확한 매칭 없음")
-                logger.info(f"🔍 [퍼지 매칭 시작] 유사 농약명 검색 중...")
+                logger.info(f"🔍 [부분 매칭 시작] 부분 문자열 검색 중...")
                 
-                # 모든 농약명을 가져와서 유사도 검사
-                all_pesticides = PesticideLimit.objects.values_list('pesticide_name_en', flat=True).distinct()
-                best_match = None
-                highest_similarity = 0
+                # 1단계: 부분 매칭 시도 (pesticide_name_for_db가 DB 농약명에 포함되는지 확인)
+                partial_match = PesticideLimit.objects.filter(
+                    pesticide_name_en__icontains=pesticide_name_for_db
+                ).first()
                 
-                for std_name in all_pesticides:
-                    # 단순 문자열 유사도 계산 (Levenshtein 거리 기반)
-                    similarity = calculate_similarity(pesticide_name_for_db.lower(), std_name.lower())
-                    if similarity > highest_similarity and similarity > 0.8:  # 80% 이상 유사
-                        highest_similarity = similarity
-                        best_match = std_name
-                
-                if best_match:
-                    standard_pesticide_name = best_match
+                if partial_match:
+                    standard_pesticide_name = partial_match.pesticide_name_en
                     pesticide_name_match = False  # 정확한 매칭은 아니므로 False
-                    logger.info(f"✨ [퍼지 매칭 성공] '{pesticide_name_for_db}' → 표준명: '{best_match}' (유사도: {highest_similarity:.2f})")
+                    logger.info(f"✨ [부분 매칭 성공] '{pesticide_name_for_db}' → 표준명: '{standard_pesticide_name}'")
+                    
+                    # 부분 매칭 성공 후 DB에서 MRL 조회
+                    if sample_description:
+                        direct_match = PesticideLimit.objects.filter(
+                            pesticide_name_en__iexact=standard_pesticide_name,
+                            food_name__iexact=mapped_sample_description
+                        ).first()
+                        
+                        if direct_match:
+                            db_korea_mrl = direct_match.max_residue_limit
+                            condition_code = direct_match.condition_code.code if direct_match.condition_code else ''
+                            # 소수점 이하 불필요한 0 제거하여 표시
+                            if db_korea_mrl == int(db_korea_mrl):
+                                formatted_value = str(int(db_korea_mrl))
+                            else:
+                                formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                            if condition_code:
+                                db_korea_mrl_display = f"{formatted_value}({condition_code})"
+                            else:
+                                db_korea_mrl_display = formatted_value
+                            logger.info(f"부분 매칭 DB 조회 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
+                        else:
+                            # 직접 매칭 실패 시 PDF 값 사용
+                            if pdf_korea_mrl is not None:
+                                db_korea_mrl = pdf_korea_mrl
+                                db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                                logger.info(f"부분 매칭 DB 조회 실패, PDF 값 사용: {db_korea_mrl_display}")
+                            else:
+                                db_korea_mrl = decimal.Decimal('0.01')
+                                db_korea_mrl_display = "PLS 0.01"
+                                logger.info(f"부분 매칭 DB 조회 실패, PLS 적용")
+                    else:
+                        # sample_description이 없으면 PDF 값 사용
+                        if pdf_korea_mrl is not None:
+                            db_korea_mrl = pdf_korea_mrl
+                            db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                            logger.info(f"품목명 없음, PDF 값 사용: {db_korea_mrl_display}")
+                        else:
+                            db_korea_mrl = decimal.Decimal('0.01')
+                            db_korea_mrl_display = "PLS 0.01"
+                            logger.info(f"품목명 없음, PLS 적용")
                 else:
-                    standard_pesticide_name = pesticide_name_for_db  # DB 조회용 농약명 사용 (숫자 제거된 버전)
-                    pesticide_name_match = False
-                    logger.info(f"💔 [퍼지 매칭 실패] 유사 농약명 찾지 못함, 기본값 사용: '{pesticide_name_for_db}'")
-
-                # PDF 값이 있으면 사용, 없으면 PLS
-                if pdf_korea_mrl is not None:
-                    db_korea_mrl = pdf_korea_mrl
-                    db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
-                    logger.info(f"농약성분명 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
-                else:
-                    db_korea_mrl = decimal.Decimal('0.01')
-                    db_korea_mrl_display = "PLS 0.01"
-                    logger.info(f"농약성분명 매칭 실패, PLS 적용")
+                    # 2단계: 퍼지 매칭 시도
+                    logger.info(f"❌ [부분 매칭 실패] 퍼지 매칭 시도 중...")
+                    
+                    # 모든 농약명을 가져와서 유사도 검사
+                    all_pesticides = PesticideLimit.objects.values_list('pesticide_name_en', flat=True).distinct()
+                    best_match = None
+                    highest_similarity = 0
+                    
+                    for std_name in all_pesticides:
+                        # 단순 문자열 유사도 계산 (Levenshtein 거리 기반)
+                        similarity = calculate_similarity(pesticide_name_for_db.lower(), std_name.lower())
+                        if similarity > highest_similarity and similarity > 0.6:  # 60% 이상 유사 (기준 완화)
+                            highest_similarity = similarity
+                            best_match = std_name
+                    
+                    if best_match:
+                        standard_pesticide_name = best_match
+                        pesticide_name_match = False  # 정확한 매칭은 아니므로 False
+                        logger.info(f"✨ [퍼지 매칭 성공] '{pesticide_name_for_db}' → 표준명: '{best_match}' (유사도: {highest_similarity:.2f})")
+                    else:
+                        standard_pesticide_name = pesticide_name_for_db  # DB 조회용 농약명 사용 (숫자 제거된 버전)
+                        pesticide_name_match = False
+                        logger.info(f"💔 [퍼지 매칭 실패] 유사 농약명 찾지 못함, 기본값 사용: '{pesticide_name_for_db}'")
+                        
+                        # 퍼지 매칭 실패 시에만 PDF 값 사용
+                        if pdf_korea_mrl is not None:
+                            db_korea_mrl = pdf_korea_mrl
+                            db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                            logger.info(f"농약성분명 매칭 실패, PDF 값 사용: {pdf_korea_mrl}")
+                        else:
+                            db_korea_mrl = decimal.Decimal('0.01')
+                            db_korea_mrl_display = "PLS 0.01"
+                            logger.info(f"농약성분명 매칭 실패, PLS 적용")
 
         except Exception as e:
             logger.error(f"검증 중 DB 조회 오류: {str(e)}")

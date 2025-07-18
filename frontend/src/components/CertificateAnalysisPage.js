@@ -291,16 +291,16 @@ const PesticideResultsVerification = ({ results }) => {
                 
                 {/* 검토의견이 없는 경우 계산 판정 열 숨김 */}
                 {!hasEmptyReviewOpinions && (
-                  <TableCell align="center">Ai 판정</TableCell>
+                  <TableCell align="center">MRL판정</TableCell>
                 )}
                 
-                <TableCell align="center">검정증명서 검증결과</TableCell>
+                <TableCell align="center">최종Ai판정</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {results.map((result, index) => {
                 // 검토의견이 비어있는 경우 판정여부는 성분명 검증과 잔류허용기준 일치 여부만 확인
-                // 검정증명서 검증결과: 성분명검증 + AI판정 모두 성공시만 체크
+                // 최종Ai판정: 성분명검증 + AI판정 모두 성공시만 체크
                 const verificationStatus = hasEmptyReviewOpinions
                   ? (result.pesticide_name_match && 
                      (result.pdf_korea_mrl === result.db_korea_mrl || 
@@ -361,8 +361,8 @@ const PesticideResultsVerification = ({ results }) => {
                     {!hasEmptyReviewOpinions && (
                       <TableCell align="center">
                         <Chip 
-                          label={result.is_pdf_consistent ? '적합' : '부적합'} 
-                          color={result.is_pdf_consistent ? 'success' : 'error'}
+                          label={result.db_calculated_result === '적합' ? '적합' : '부적합'} 
+                          color={result.db_calculated_result === '적합' ? 'success' : 'error'}
                           size="small"
                         />
                       </TableCell>
