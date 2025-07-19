@@ -193,4 +193,14 @@ export const api = {
       throw error;
     }
   },
+
+  // 농약성분명 자동완성
+  searchPesticideAutocomplete: async (query) => {
+    return await getPesticideAutocomplete(query);
+  },
+
+  // 식품명 자동완성
+  searchFoodAutocomplete: async (query) => {
+    return await getFoodAutocomplete(query);
+  },
 };

@@ -1,7 +1,7 @@
 // frontend/src/components/SearchStatistics.js
 
 import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+// import { api } from '../services/api';
 import {
   Card,
   CardContent,
@@ -14,11 +14,16 @@ import {
 } from '@mui/material';
 
 const SearchStatistics = () => {
-  const [stats, setStats] = useState(null);
+  const [stats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // const [error, setError] = useState(null);
 
   useEffect(() => {
+    // 임시로 통계 로딩 비활성화
+    setLoading(false);
+    
+    // fetchStats 함수와 interval 설정 모두 주석 처리
+    /*
     const fetchStats = async () => {
       try {
         setLoading(true);
@@ -33,13 +38,10 @@ const SearchStatistics = () => {
       }
     };
 
-    // 임시로 통계 로딩 비활성화
-    // fetchStats();
-    setLoading(false);
-    
-    // 자동 새로고침 비활성화 (필요시 수동으로 페이지 새로고침)
-    // const interval = setInterval(fetchStats, 300000);
-    // return () => clearInterval(interval);
+    fetchStats();
+    const interval = setInterval(fetchStats, 300000);
+    return () => clearInterval(interval);
+    */
   }, []);
 
   if (loading) return (
@@ -48,11 +50,11 @@ const SearchStatistics = () => {
     </Box>
   );
 
-  if (error) return (
-    <Box sx={{ p: 3 }}>
-      <Typography color="error">{error}</Typography>
-    </Box>
-  );
+  // if (error) return (
+  //   <Box sx={{ p: 3 }}>
+  //     <Typography color="error">{error}</Typography>
+  //   </Box>
+  // );
 
   if (!stats) return null;
 

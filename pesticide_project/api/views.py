@@ -303,17 +303,39 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         # 2. 부분 매칭으로 유사한 품목들 찾기
         similar_foods = []
         
-        # 키워드 추출 (공백, 특수문자로 분리)
+        # 키워드 추출 및 검색
         import re
+        
+        # 전체 단어로 검색
+        matches = PesticideLimit.objects.filter(
+            food_name__icontains=parsed_food
+        ).values_list('food_name', flat=True).distinct()[:20]
+        
+        for match in matches:
+            if match not in similar_foods:
+                similar_foods.append(match)
+        
+        # 개별 글자로도 검색 (특히 "열무" -> "무" 같은 경우)
+        for char in parsed_food:
+            if len(char.strip()) > 0:  # 빈 문자가 아닌 경우
+                char_matches = PesticideLimit.objects.filter(
+                    food_name__icontains=char
+                ).values_list('food_name', flat=True).distinct()[:10]
+                
+                for match in char_matches:
+                    if match not in similar_foods:
+                        similar_foods.append(match)
+        
+        # 키워드 추출 (공백, 특수문자로 분리) - 기존 로직 유지
         keywords = re.findall(r'[가-힣a-zA-Z]+', parsed_food)
         
         for keyword in keywords:
             if len(keyword) >= 2:  # 2글자 이상 키워드만 검색
-                matches = PesticideLimit.objects.filter(
+                keyword_matches = PesticideLimit.objects.filter(
                     food_name__icontains=keyword
                 ).values_list('food_name', flat=True).distinct()[:20]
                 
-                for match in matches:
+                for match in keyword_matches:
                     if match not in similar_foods:
                         similar_foods.append(match)
         

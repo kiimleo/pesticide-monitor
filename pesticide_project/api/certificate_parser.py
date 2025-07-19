@@ -338,7 +338,13 @@ def extract_applicant_info(text):
     # 먼저 신청인(Applicant) 섹션만 추출
     applicant_section = None
     applicant_patterns = [
-        # 신청인 섹션 추출 (다음 주요 섹션까지) - 더 유연하게
+        # 성명 라인부터 검정목적까지 전체 - 최우선 패턴
+        r'(성명\(법인의\s*경우에는\s*명칭\).*?)(?:검정\s*목적|Analytical\s*Purpose|GAP\s*인증용|친환경\s*인증용)',
+        r'(성명\(법인의 경우에는 명칭\).*?)(?:검정품목|Sample\s*Description)',
+        # 신청인 섹션 추출 - 성명 라인부터 신청인 섹션 끝까지 (전체 캡처)
+        r'(성명\(법인의\s*경우에는\s*명칭\).*?신청인\s*\(Applicant\).*?)(?:검정\s*목적|Analytical\s*Purpose|GAP\s*인증용|친환경\s*인증용)',
+        r'(성명\(법인의 경우에는 명칭\).*?신청인\s*\(Applicant\).*?)(?:검정품목|Sample\s*Description)',
+        # 기존 패턴들 (fallback)
         r'신청인\s*\(Applicant\)(.*?)(?:검정\s*목적|Analytical\s*Purpose|GAP\s*인증용|친환경\s*인증용)',
         r'신청인\s*\(Applicant\)(.*?)(?:검정품목|Sample\s*Description|[가-힣]{2,}$)',
         # 전화번호까지만 추출
@@ -352,6 +358,7 @@ def extract_applicant_info(text):
         if match:
             applicant_section = match.group(1).strip()
             logger.info(f"신청인 섹션 추출 성공: 길이 {len(applicant_section)}")
+            logger.info(f"신청인 섹션 내용: '{applicant_section}'")
             break
 
     # 신청인 섹션을 찾지 못했다면 전체 텍스트에서 시도
@@ -361,7 +368,15 @@ def extract_applicant_info(text):
 
     # 1. 법인명/신청인명 추출
     name_patterns = [
-        # 가장 정확한 패턴부터
+        # 가장 정확한 패턴부터 - 콜론 포함하여 법인등록번호 앞까지만 매칭
+        r'성명\(법인의 경우에는 명칭\):\s*(.+?)(?:\s+법인등록번호)',
+        r'성명\(법인의\s*경우에는\s*명칭\):\s*(.+?)(?:\s+법인등록번호)',
+        r'성명\s*\(법인의\s*경우에는\s*명칭\):\s*(.+?)(?:\s+법인등록번호)',
+        # 콜론 선택적 패턴 (fallback)
+        r'성명\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^법인등록번호\n\r]+)(?:\s*법인등록번호|$)',
+        r'성명\(법인의 경우에는 명칭\)\s*[:：]?\s*([^법인등록번호\n\r]+)(?:\s*법인등록번호|$)',
+        r'성명\s*\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^법인등록번호\n\r]+)(?:\s*법인등록번호|$)',
+        # 기존 패턴들 (fallback)
         r'성명\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^\n\r]+)',
         r'성명\(법인의 경우에는 명칭\)\s*[:：]?\s*([^\n\r]+)',
         r'성명\s*\(법인의\s*경우에는\s*명칭\)\s*[:：]?\s*([^\n\r]+)',
@@ -372,19 +387,26 @@ def extract_applicant_info(text):
         r'㈜\s*([^\n\r\t]+)',
     ]
 
-    for pattern in name_patterns:
+    for i, pattern in enumerate(name_patterns):
+        logger.debug(f"이름 패턴 {i+1} 시도: {pattern}")
         match = re.search(pattern, applicant_section, re.IGNORECASE | re.MULTILINE)
         if match:
             name = match.group(1).strip()
+            logger.debug(f"이름 패턴 {i+1} 매칭됨: '{name}'")
             # 불필요한 텍스트 제거
             name = re.sub(r'법인등록번호.*$', '', name).strip()
             name = re.sub(r'\(Name/Organization\).*$', '', name).strip()
             name = re.sub(r'\s+', ' ', name).strip()
+            logger.debug(f"이름 정제 후: '{name}'")
             # 최소 길이 체크 및 유효성 검사
             if name and len(name) >= 1 and not re.match(r'^[0-9-]+$', name):
                 info['name'] = name
                 logger.info(f"신청인명 추출 성공: {name}")
                 break
+            else:
+                logger.debug(f"신청인명 후보 제외: '{name}' (길이 또는 유효성 검사 실패)")
+        else:
+            logger.debug(f"이름 패턴 {i+1} 매칭 실패")
 
     # 2. 법인등록번호 추출
     id_patterns = [
@@ -947,15 +969,22 @@ def verify_pesticide_results(parsing_result):
                         try:
                             import requests
                             from django.conf import settings
+                            from urllib.parse import quote
 
                             host = 'localhost'
                             port = '8000'
-                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={standard_pesticide_name}&food={mapped_sample_description}"
-
+                            # URL 인코딩 적용
+                            encoded_pesticide = quote(standard_pesticide_name)
+                            encoded_food = quote(mapped_sample_description)
+                            api_url = f"http://{host}:{port}/api/pesticides/?pesticide={encoded_pesticide}&food={encoded_food}"
+                            
+                            logger.info(f"API 호출 URL: {api_url}")
                             response = requests.get(api_url)
+                            logger.info(f"API 응답 상태: {response.status_code}")
 
                             if response.status_code == 200:
                                 data = response.json()
+                                logger.info(f"API 응답 데이터: {data}")
                                 if data and len(data) > 0:
                                     db_korea_mrl = decimal.Decimal(data[0].get('max_residue_limit', 0))
                                     db_korea_mrl_text = data[0].get('food_name', '')
@@ -1085,6 +1114,102 @@ def verify_pesticide_results(parsing_result):
                         standard_pesticide_name = best_match
                         pesticide_name_match = False  # 정확한 매칭은 아니므로 False
                         logger.info(f"✨ [퍼지 매칭 성공] '{pesticide_name_for_db}' → 표준명: '{best_match}' (유사도: {highest_similarity:.2f})")
+                        
+                        # 퍼지 매칭 성공 후 MRL 조회 시도
+                        # 1. 직접 매칭 시도
+                        direct_match = PesticideLimit.objects.filter(
+                            pesticide_name_en__iexact=standard_pesticide_name,
+                            food_name__iexact=mapped_sample_description
+                        ).first()
+                        
+                        if direct_match:
+                            db_korea_mrl = direct_match.max_residue_limit
+                            condition_code = direct_match.condition_code.code if direct_match.condition_code else ''
+                            # 소수점 이하 불필요한 0 제거하여 표시
+                            if db_korea_mrl == int(db_korea_mrl):
+                                formatted_value = str(int(db_korea_mrl))
+                            else:
+                                formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                            if condition_code:
+                                db_korea_mrl_display = f"{formatted_value}({condition_code})"
+                            else:
+                                db_korea_mrl_display = formatted_value
+                            logger.info(f"퍼지 매칭 후 직접 매칭 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
+                        
+                        # 2. 직접 매칭이 없는 경우 API 호출
+                        if not direct_match:
+                            try:
+                                import requests
+                                from django.conf import settings
+                                from urllib.parse import quote
+
+                                host = 'localhost'
+                                port = '8000'
+                                # URL 인코딩 적용
+                                encoded_pesticide = quote(standard_pesticide_name)
+                                encoded_food = quote(mapped_sample_description)
+                                api_url = f"http://{host}:{port}/api/pesticides/?pesticide={encoded_pesticide}&food={encoded_food}"
+                                
+                                logger.info(f"퍼지 매칭 후 API 호출 URL: {api_url}")
+                                response = requests.get(api_url)
+                                logger.info(f"퍼지 매칭 후 API 응답 상태: {response.status_code}")
+
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    logger.info(f"퍼지 매칭 후 API 응답 데이터: {data}")
+                                    if data and len(data) > 0:
+                                        db_korea_mrl = decimal.Decimal(data[0].get('max_residue_limit', 0))
+                                        db_korea_mrl_text = data[0].get('food_name', '')
+
+                                        condition_code = data[0].get('condition_code_symbol', '')
+                                        condition_desc = data[0].get('condition_code_description', '')
+
+                                        if condition_code:
+                                            # 소수점 이하 불필요한 0 제거하여 표시
+                                            if db_korea_mrl == int(db_korea_mrl):
+                                                formatted_value = str(int(db_korea_mrl))
+                                            else:
+                                                formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                                            db_korea_mrl_display = f"{formatted_value}({condition_code})"
+                                        else:
+                                            # 소수점 이하 불필요한 0 제거하여 표시
+                                            if db_korea_mrl == int(db_korea_mrl):
+                                                formatted_value = str(int(db_korea_mrl))
+                                            else:
+                                                formatted_value = f"{db_korea_mrl:.3f}".rstrip('0').rstrip('.')
+                                            db_korea_mrl_display = formatted_value
+
+                                        logger.info(f"퍼지 매칭 후 API 호출 성공: {standard_pesticide_name} + {sample_description} → {db_korea_mrl_display}")
+                                    else:
+                                        # API 결과가 없으면 PDF 값 사용
+                                        if pdf_korea_mrl is not None:
+                                            db_korea_mrl = pdf_korea_mrl
+                                            db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                                            logger.info(f"퍼지 매칭 후 API 결과 없음: PDF 값 사용 - {db_korea_mrl_display}")
+                                        else:
+                                            db_korea_mrl = decimal.Decimal('0.01')
+                                            db_korea_mrl_display = "PLS 0.01"
+                                            logger.info(f"퍼지 매칭 후 API 결과 없음, PDF 값도 없음: PLS 적용")
+                                else:
+                                    # API 호출 실패 시 처리
+                                    if pdf_korea_mrl is not None:
+                                        db_korea_mrl = pdf_korea_mrl
+                                        db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                                        logger.info(f"퍼지 매칭 후 API 호출 실패: PDF 값 사용 - {db_korea_mrl_display}")
+                                    else:
+                                        db_korea_mrl = decimal.Decimal('0.01')
+                                        db_korea_mrl_display = "PLS 0.01"
+                                        logger.error(f"퍼지 매칭 후 API 호출 실패({response.status_code}), PDF 값도 없음: PLS 적용")
+                            except Exception as api_error:
+                                # API 예외 발생 시 처리
+                                if pdf_korea_mrl is not None:
+                                    db_korea_mrl = pdf_korea_mrl
+                                    db_korea_mrl_display = result.get('korea_mrl_text', str(pdf_korea_mrl))
+                                    logger.error(f"퍼지 매칭 후 API 호출 오류({str(api_error)}): PDF 값 사용 - {db_korea_mrl_display}")
+                                else:
+                                    db_korea_mrl = decimal.Decimal('0.01')
+                                    db_korea_mrl_display = "PLS 0.01"
+                                    logger.error(f"퍼지 매칭 후 API 호출 오류({str(api_error)}), PDF 값도 없음: PLS 적용")
                     else:
                         standard_pesticide_name = pesticide_name_for_db  # DB 조회용 농약명 사용 (숫자 제거된 버전)
                         pesticide_name_match = False
@@ -1131,8 +1256,13 @@ def verify_pesticide_results(parsing_result):
                 pdf_calculated_result = '확인불가'
                 logger.warning("PDF MRL 값이 없어 PDF 계산 결과를 확인할 수 없음")
 
-        # DB MRL로 적합/부적합 계산 - None 체크 강화
-        if db_korea_mrl is not None:
+        # DB MRL로 적합/부적합 계산 - 친환경 조건 반영
+        if is_eco_friendly:
+            # 친환경인증용은 무조건 0.01 미만이어야 적합
+            eco_friendly_threshold = decimal.Decimal('0.01')
+            db_calculated_result = '적합' if detection_value < eco_friendly_threshold else '부적합'
+            logger.info(f"친환경 기준 DB 계산: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}, 결과: {db_calculated_result}")
+        elif db_korea_mrl is not None:
             db_calculated_result = '적합' if detection_value <= db_korea_mrl else '부적합'
         else:
             db_calculated_result = '확인불가'
@@ -1151,10 +1281,40 @@ def verify_pesticide_results(parsing_result):
             # 2. 연구원이 기록한 MRL과 표준 MRL이 일치하는지 확인 (연구원 실수 감지)
             mrl_accuracy = True
             if pdf_korea_mrl is not None and db_korea_mrl is not None:
-                # MRL 값이 다르면 연구원 실수로 판단
-                if abs(float(pdf_korea_mrl) - float(db_korea_mrl)) > 0.001:  # 0.001 허용오차
+                # PDF와 DB MRL 텍스트 준비
+                pdf_mrl_text = result.get('korea_mrl_text', str(pdf_korea_mrl)) if result.get('korea_mrl_text') else str(pdf_korea_mrl)
+                db_mrl_text = str(db_korea_mrl_display) if db_korea_mrl_display else str(db_korea_mrl)
+                
+                # 특수기호 정규화 함수
+                def normalize_mrl(text):
+                    import re
+                    # 특수기호 추출 (†, T 등)
+                    symbols = re.findall(r'[†T]', text)
+                    # 숫자 추출
+                    numbers = re.findall(r'\d+\.?\d*', text)
+                    numeric_value = float(numbers[0]) if numbers else 0
+                    return numeric_value, set(symbols)
+                
+                # PDF와 DB 값 정규화
+                pdf_numeric, pdf_symbols = normalize_mrl(pdf_mrl_text)
+                db_numeric, db_symbols = normalize_mrl(db_mrl_text)
+                
+                # 1. 문자열이 완전히 일치하면 정확
+                if pdf_mrl_text == db_mrl_text:
+                    mrl_accuracy = True
+                    logger.info(f"✅ MRL 완전 일치: PDF='{pdf_mrl_text}', DB='{db_mrl_text}'")
+                # 2. 수치적으로 같고 특수기호도 같으면 정확 (형식만 다른 경우)
+                elif abs(pdf_numeric - db_numeric) <= 0.001 and pdf_symbols == db_symbols:
+                    mrl_accuracy = True
+                    logger.info(f"✅ MRL 수치+기호 일치: PDF='{pdf_mrl_text}', DB='{db_mrl_text}' → 형식만 다름")
+                # 3. 수치는 같지만 특수기호가 다른 경우
+                elif abs(pdf_numeric - db_numeric) <= 0.001 and pdf_symbols != db_symbols:
                     mrl_accuracy = False
-                    logger.warning(f"🚨 MRL 불일치 감지: PDF={pdf_korea_mrl}, DB={db_korea_mrl} → AI 판정 부적합")
+                    logger.warning(f"🚨 MRL 특수기호 불일치: PDF='{pdf_mrl_text}', DB='{db_mrl_text}' → 연구원이 특수기호 누락/오류")
+                # 4. 수치 자체가 다른 경우
+                else:
+                    mrl_accuracy = False
+                    logger.warning(f"🚨 MRL 값 불일치: PDF='{pdf_mrl_text}', DB='{db_mrl_text}' → 연구원 기록 오류")
             
             # 3. 최종 AI 판정: 두 조건 모두 만족해야 함
             is_pdf_consistent = basic_consistency and mrl_accuracy

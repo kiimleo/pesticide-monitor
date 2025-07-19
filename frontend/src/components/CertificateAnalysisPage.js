@@ -22,7 +22,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  TextField
 } from '@mui/material';
 import { CloudUpload, CheckCircleOutline, ErrorOutline, Info } from '@mui/icons-material';
 import { api } from '../services/api';
@@ -134,36 +135,129 @@ const DuplicateDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
+// 검증 확인 다이얼로그 컴포넌트
+const VerificationConfirmDialog = ({ open, onClose, onConfirm }) => {
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>검증 진행 확인</DialogTitle>
+      <DialogContent>
+        <Typography>
+          증명서에 적은 농약성분명과 잔류농약 수치만 검증할까요?
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>취소</Button>
+        <Button onClick={onConfirm} color="primary" variant="contained">예</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // 품목 선택 다이얼로그 컴포넌트
 const FoodSelectionDialog = ({ open, onClose, onConfirm, parsedFood, similarFoods }) => {
   const [selectedFood, setSelectedFood] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 식품명 검색 함수
+  const searchFoods = async (query) => {
+    if (!query || query.length < 1) {
+      setSearchResults([]);
+      return;
+    }
+    
+    try {
+      setIsSearching(true);
+      const response = await api.searchFoodAutocomplete(query);
+      setSearchResults(response.slice(0, 10)); // 최대 10개만 표시
+    } catch (error) {
+      console.error('식품 검색 오류:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 검색어 변경 핸들러
+  const handleSearchChange = (event) => {
+    const query = event.target.value;
+    setSearchQuery(query);
+    searchFoods(query);
+  };
 
   const handleConfirm = () => {
     if (selectedFood) {
       onConfirm(selectedFood);
       setSelectedFood('');
+      setSearchQuery('');
+      setSearchResults([]);
     }
   };
 
   const handleClose = () => {
     setSelectedFood('');
+    setSearchQuery('');
+    setSearchResults([]);
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>검증품목선택</DialogTitle>
       <DialogContent>
         <Typography variant="body1" sx={{ mb: 2 }}>
           <strong>"{parsedFood}"</strong>은 데이터베이스에 없습니다. 검정하려는 품목을 선택하세요.
         </Typography>
         
+        {/* 직접 검색 섹션 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            직접 검색:
+          </Typography>
+          <TextField
+            fullWidth
+            placeholder="식품명을 입력하여 검색..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            variant="outlined"
+            size="small"
+            sx={{ mb: 1 }}
+          />
+          {isSearching && (
+            <Typography variant="caption" color="text.secondary">
+              검색 중...
+            </Typography>
+          )}
+          {searchResults.length > 0 && (
+            <Box sx={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 1, p: 1 }}>
+              {searchResults.map((food, index) => (
+                <Box key={index} sx={{ mb: 0.5 }}>
+                  <Button
+                    variant={selectedFood === food ? "contained" : "text"}
+                    fullWidth
+                    size="small"
+                    onClick={() => setSelectedFood(food)}
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      textTransform: 'none'
+                    }}
+                  >
+                    {food}
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {/* 유사한 품목들 섹션 */}
         {similarFoods && similarFoods.length > 0 ? (
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              유사한 품목들:
+              추천 유사 품목들:
             </Typography>
-            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+            <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
               {similarFoods.map((food, index) => (
                 <Box key={index} sx={{ mb: 1 }}>
                   <Button
@@ -184,32 +278,38 @@ const FoodSelectionDialog = ({ open, onClose, onConfirm, parsedFood, similarFood
         ) : (
           <Box>
             <Alert severity="warning" sx={{ mb: 2 }}>
-              유사한 품목을 찾을 수 없습니다. 관리자에게 문의하시기 바랍니다.
+              추천할 유사한 품목을 찾을 수 없습니다.
             </Alert>
-            <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
-              농약성분명과 잔류농약검출량만 검증을 진행할까요?
-            </Typography>
           </Box>
         )}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>취소</Button>
         {similarFoods && similarFoods.length > 0 ? (
-          <Button 
-            onClick={handleConfirm} 
-            color="primary" 
-            disabled={!selectedFood}
-            variant="contained"
-          >
-            선택
-          </Button>
+          <>
+            <Button 
+              onClick={() => onConfirm('__no_food_selected__')} 
+              color="warning" 
+              variant="outlined"
+            >
+              유사한 품목이 없음
+            </Button>
+            <Button 
+              onClick={handleConfirm} 
+              color="primary" 
+              disabled={!selectedFood}
+              variant="contained"
+            >
+              선택
+            </Button>
+          </>
         ) : (
           <Button 
             onClick={() => onConfirm('__no_food_selected__')} 
             color="primary" 
             variant="contained"
           >
-            확인
+            유사한 품목이 없음
           </Button>
         )}
       </DialogActions>
@@ -383,12 +483,23 @@ const PesticideResultsVerification = ({ results }) => {
             <TableBody>
               {results.map((result, index) => {
                 // 검토의견이 비어있는 경우 판정여부는 성분명 검증과 잔류허용기준 일치 여부만 확인
-                // 최종Ai판정: 성분명검증 + AI판정 모두 성공시만 체크
-                const verificationStatus = hasEmptyReviewOpinions
-                  ? (result.pesticide_name_match && 
-                     (result.pdf_korea_mrl === result.db_korea_mrl || 
-                      (parseFloat(result.pdf_korea_mrl) === parseFloat(result.db_korea_mrl))))
-                  : (result.pesticide_name_match && result.is_pdf_consistent);
+                // 최종AI판정: 연구원이 검정증명서를 올바르게 작성했는지 확인
+                // 조건1) 기록된 검토의견 = MRL판정 (연구원이 올바르게 판정했는지)
+                // 조건2) 기록된 농약성분명 = 표준명 (연구원이 농약명을 정확히 적었는지)
+                // 조건3) 기록된 MRL 값이 비어있지 않아야 함 (검정증명서 완성도)
+                
+                // MRL판정은 이미 친환경 조건이 반영되어 계산됨 (백엔드에서 처리)
+                const mrlJudgmentCorrect = hasEmptyReviewOpinions 
+                  ? true  // 검토의견이 없는 경우는 성분명만 확인
+                  : result.pdf_result === ((result.db_calculated_result === '적합' && result.is_pdf_consistent) ? '적합' : '부적합');
+                
+                // 기록된 MRL 값이 비어있는지 확인
+                const hasMrlValue = result.pdf_korea_mrl_text && 
+                                   result.pdf_korea_mrl_text.trim() !== '' && 
+                                   result.pdf_korea_mrl_text !== '-';
+                
+                // 최종 판정: 세 조건 모두 만족하면 연구원이 올바르게 작성한 것
+                const verificationStatus = result.pesticide_name_match && mrlJudgmentCorrect && hasMrlValue;
                 
                 return (
                   <TableRow 
@@ -444,8 +555,8 @@ const PesticideResultsVerification = ({ results }) => {
                     {!hasEmptyReviewOpinions && (
                       <TableCell align="center">
                         <Chip 
-                          label={result.db_calculated_result === '적합' ? '적합' : '부적합'} 
-                          color={result.db_calculated_result === '적합' ? 'success' : 'error'}
+                          label={(result.db_calculated_result === '적합' && result.is_pdf_consistent) ? '적합' : '부적합'} 
+                          color={(result.db_calculated_result === '적합' && result.is_pdf_consistent) ? 'success' : 'error'}
                           size="small"
                         />
                       </TableCell>
@@ -550,6 +661,8 @@ const CertificateAnalysisPage = () => {
   const [foodSelectionDialogOpen, setFoodSelectionDialogOpen] = useState(false);
   const [parsedFood, setParsedFood] = useState('');
   const [similarFoods, setSimilarFoods] = useState([]);
+  // 검증 확인 다이얼로그 상태 추가
+  const [verificationConfirmDialogOpen, setVerificationConfirmDialogOpen] = useState(false);
 
   // 디버깅: 상태 변화 추적
   console.log('Current states:', {
@@ -642,25 +755,9 @@ const CertificateAnalysisPage = () => {
   const handleFoodSelectionConfirm = async (selectedFood) => {
     setFoodSelectionDialogOpen(false);
     
-    // 특수 케이스: 품목 없이 검증 진행
+    // 특수 케이스: "유사한 품목이 없음" 선택 시 확인 다이얼로그 표시
     if (selectedFood === '__no_food_selected__') {
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('skip_food_validation', 'true');
-        
-        try {
-          setLoading(true);
-          const response = await api.uploadCertificate(formData);
-          setParsingResult(response.parsing_result);
-          setVerificationResults(response.verification_result);
-        } catch (err) {
-          console.error('Re-analysis error:', err);
-          setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
-        } finally {
-          setLoading(false);
-        }
-      }
+      setVerificationConfirmDialogOpen(true);
       return;
     }
     
@@ -681,6 +778,46 @@ const CertificateAnalysisPage = () => {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  // 검증 확인 다이얼로그 - 예 버튼 처리
+  const handleVerificationConfirm = async () => {
+    setVerificationConfirmDialogOpen(false);
+    
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('skip_food_validation', 'true');
+      
+      try {
+        setLoading(true);
+        const response = await api.uploadCertificate(formData);
+        setParsingResult(response.parsing_result);
+        setVerificationResults(response.verification_result);
+      } catch (err) {
+        console.error('Re-analysis error:', err);
+        setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 검증 확인 다이얼로그 - 취소 버튼 처리 (전체 초기화)
+  const handleVerificationCancel = () => {
+    setVerificationConfirmDialogOpen(false);
+    setParsedFood('');
+    setSimilarFoods([]);
+    // 전체 상태 초기화
+    setFile(null);
+    setParsingResult(null);
+    setVerificationResults(null);
+    setError(null);
+    
+    // 파일 인풋 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -752,6 +889,13 @@ const CertificateAnalysisPage = () => {
         onConfirm={handleFoodSelectionConfirm}
         parsedFood={parsedFood}
         similarFoods={similarFoods}
+      />
+
+      {/* 검증 확인 다이얼로그 */}
+      <VerificationConfirmDialog 
+        open={verificationConfirmDialogOpen}
+        onClose={handleVerificationCancel}
+        onConfirm={handleVerificationConfirm}
       />
 
       {/* 오류 표시 */}
