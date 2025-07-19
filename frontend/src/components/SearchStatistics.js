@@ -33,10 +33,13 @@ const SearchStatistics = () => {
       }
     };
 
-    fetchStats();
-    // 5분마다 통계 새로고침
-    const interval = setInterval(fetchStats, 300000);
-    return () => clearInterval(interval);
+    // 임시로 통계 로딩 비활성화
+    // fetchStats();
+    setLoading(false);
+    
+    // 자동 새로고침 비활성화 (필요시 수동으로 페이지 새로고침)
+    // const interval = setInterval(fetchStats, 300000);
+    // return () => clearInterval(interval);
   }, []);
 
   if (loading) return (

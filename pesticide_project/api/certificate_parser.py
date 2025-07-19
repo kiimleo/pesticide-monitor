@@ -84,7 +84,15 @@ def upload_certificate(request):
 
     # 덮어쓰기 옵션 확인
     overwrite = request.data.get('overwrite', 'false').lower() == 'true'
+    # 사용자가 선택한 품목명 확인
+    selected_food = request.data.get('selected_food', '').strip()
+    # 품목 검증 건너뛰기 옵션 확인
+    skip_food_validation = request.data.get('skip_food_validation', 'false').lower() == 'true'
     logger.info(f"덮어쓰기 옵션: {overwrite}")
+    if selected_food:
+        logger.info(f"사용자 선택 품목: {selected_food}")
+    if skip_food_validation:
+        logger.info("품목 검증 건너뛰기 옵션 활성화")
 
     # PDF 파일 형식 검증
     if not pdf_file.name.endswith('.pdf'):
@@ -133,6 +141,42 @@ def upload_certificate(request):
                     logger.info(f"기존 파일 삭제 성공: {old_file_path}")
                 except Exception as e:
                     logger.warning(f"기존 파일 삭제 실패: {old_file_path}, 오류: {str(e)}")
+
+        # 사용자가 품목을 선택했다면, 해당 품목으로 매핑 적용
+        if selected_food:
+            parsing_result['sample_description'] = selected_food
+            logger.info(f"품목명 사용자 선택 적용: {selected_food}")
+
+        # 품목명이 DB에 없는 경우 유사 품목 검색 필요 (사용자 선택이 없고 건너뛰기 옵션이 없는 경우만)
+        sample_description = parsing_result.get('sample_description', '')
+        if sample_description and not selected_food and not skip_food_validation:
+            # 기본 매핑 확인
+            FOOD_NAME_MAPPING = {
+                '깻잎': '들깻잎',
+            }
+            mapped_food = FOOD_NAME_MAPPING.get(sample_description, sample_description)
+            
+            # 품목명이 DB에 있는지 확인
+            food_exists = PesticideLimit.objects.filter(food_name__iexact=mapped_food).exists()
+            if not food_exists:
+                # 유사 품목 검색 API 호출
+                try:
+                    import requests
+                    api_url = f"http://localhost:8000/api/pesticides/find_similar_foods/?food={sample_description}"
+                    response = requests.get(api_url)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if not data.get('exact_match', False):
+                            # 정확한 매칭이 없으면 사용자 선택 요구
+                            return Response({
+                                'message': f'"{sample_description}"은 데이터베이스에 없습니다. 품목명을 선택하세요.',
+                                'parsed_food': sample_description,
+                                'similar_foods': data.get('similar_foods', []),
+                                'requires_food_selection': True
+                            }, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    logger.error(f"유사 품목 검색 API 호출 오류: {str(e)}")
 
         # 검증 수행
         verification_result = verify_pesticide_results(parsing_result)
@@ -799,10 +843,10 @@ def verify_pesticide_results(parsing_result):
     if not parsing_result or 'pesticide_results' not in parsing_result:
         return []
 
-    # 품목명 매핑 사전 - 검정증명서 품목명 -> DB 품목명
+    # 기본 품목명 매핑 사전 (확실한 매핑만 유지)
     FOOD_NAME_MAPPING = {
         '깻잎': '들깻잎',
-        # 다른 매핑 추가 가능
+        # 안전한 매핑만 유지, 작물체 등은 사용자 선택으로 처리
     }
 
     # 친환경 검정인지 확인
@@ -876,6 +920,14 @@ def verify_pesticide_results(parsing_result):
                         food_name__iexact=mapped_sample_description
                     ).first()
 
+                    # 매칭이 실패한 경우 유사 품목 검색 필요성 확인
+                    if not direct_match and sample_description != mapped_sample_description:
+                        # 매핑된 결과도 매칭 실패한 경우, 사용자 선택이 필요한 상황
+                        logger.info(f"품목명 매칭 실패: '{sample_description}' → '{mapped_sample_description}' 모두 DB에 없음")
+                        # 이 상황에서는 유사 품목 검색을 통해 사용자 선택을 요구해야 함
+                        # 하지만 현재 함수에서는 parsing_result만 반환하므로, 
+                        # upload_certificate에서 처리하도록 플래그 설정
+                        
                     if direct_match:
                         db_korea_mrl = direct_match.max_residue_limit
                         condition_code = direct_match.condition_code.code if direct_match.condition_code else ''

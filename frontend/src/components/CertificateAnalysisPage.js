@@ -134,6 +134,89 @@ const DuplicateDialog = ({ open, onClose, onConfirm }) => {
   );
 };
 
+// 품목 선택 다이얼로그 컴포넌트
+const FoodSelectionDialog = ({ open, onClose, onConfirm, parsedFood, similarFoods }) => {
+  const [selectedFood, setSelectedFood] = useState('');
+
+  const handleConfirm = () => {
+    if (selectedFood) {
+      onConfirm(selectedFood);
+      setSelectedFood('');
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedFood('');
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>검증품목선택</DialogTitle>
+      <DialogContent>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          <strong>"{parsedFood}"</strong>은 데이터베이스에 없습니다. 검정하려는 품목을 선택하세요.
+        </Typography>
+        
+        {similarFoods && similarFoods.length > 0 ? (
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              유사한 품목들:
+            </Typography>
+            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+              {similarFoods.map((food, index) => (
+                <Box key={index} sx={{ mb: 1 }}>
+                  <Button
+                    variant={selectedFood === food ? "contained" : "outlined"}
+                    fullWidth
+                    onClick={() => setSelectedFood(food)}
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      textTransform: 'none'
+                    }}
+                  >
+                    {food}
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        ) : (
+          <Box>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              유사한 품목을 찾을 수 없습니다. 관리자에게 문의하시기 바랍니다.
+            </Alert>
+            <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
+              농약성분명과 잔류농약검출량만 검증을 진행할까요?
+            </Typography>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>취소</Button>
+        {similarFoods && similarFoods.length > 0 ? (
+          <Button 
+            onClick={handleConfirm} 
+            color="primary" 
+            disabled={!selectedFood}
+            variant="contained"
+          >
+            선택
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => onConfirm('__no_food_selected__')} 
+            color="primary" 
+            variant="contained"
+          >
+            확인
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // 기본 정보 표시 컴포넌트
 const CertificateBasicInfo = ({ data }) => {
   if (!data) return null;
@@ -463,6 +546,17 @@ const CertificateAnalysisPage = () => {
   const [verificationResults, setVerificationResults] = useState(null);
   // 다이얼로그 상태 추가
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  // 품목 선택 다이얼로그 상태 추가
+  const [foodSelectionDialogOpen, setFoodSelectionDialogOpen] = useState(false);
+  const [parsedFood, setParsedFood] = useState('');
+  const [similarFoods, setSimilarFoods] = useState([]);
+
+  // 디버깅: 상태 변화 추적
+  console.log('Current states:', {
+    foodSelectionDialogOpen,
+    parsedFood,
+    similarFoodsLength: similarFoods.length
+  });
 
 
   // fileInputRef 정의 (새로 추가)
@@ -506,7 +600,28 @@ const CertificateAnalysisPage = () => {
       }
     } catch (err) {
       console.error('Certificate analysis error:', err);
-      setError(err.response?.data?.error || '검정증명서 분석 중 오류가 발생했습니다.');
+      console.log('Error response data:', err.response?.data);
+      
+      // 품목 선택이 필요한 경우 처리
+      console.log('Checking conditions:', {
+        status: err.response?.status,
+        requires_food_selection: err.response?.data?.requires_food_selection
+      });
+      
+      if (err.response?.status === 400 && err.response?.data?.requires_food_selection) {
+        console.log('Opening food selection dialog');
+        // 품목 선택 팝업을 위한 상태만 설정하고, 분석 결과는 설정하지 않음
+        setParsedFood(err.response.data.parsed_food);
+        setSimilarFoods(err.response.data.similar_foods || []);
+        setFoodSelectionDialogOpen(true);
+        
+        // 이전 결과가 있다면 초기화
+        setParsingResult(null);
+        setVerificationResults(null);
+        setError(null);
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || '검정증명서 분석 중 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -521,6 +636,69 @@ const CertificateAnalysisPage = () => {
   // 덮어쓰기 취소 처리
   const handleOverwriteCancel = () => {
     setDuplicateDialogOpen(false);
+  };
+
+  // 품목 선택 확인 처리
+  const handleFoodSelectionConfirm = async (selectedFood) => {
+    setFoodSelectionDialogOpen(false);
+    
+    // 특수 케이스: 품목 없이 검증 진행
+    if (selectedFood === '__no_food_selected__') {
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('skip_food_validation', 'true');
+        
+        try {
+          setLoading(true);
+          const response = await api.uploadCertificate(formData);
+          setParsingResult(response.parsing_result);
+          setVerificationResults(response.verification_result);
+        } catch (err) {
+          console.error('Re-analysis error:', err);
+          setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }
+      return;
+    }
+    
+    // 선택된 품목으로 재분석 요청
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('selected_food', selectedFood);
+      
+      try {
+        setLoading(true);
+        const response = await api.uploadCertificate(formData);
+        setParsingResult(response.parsing_result);
+        setVerificationResults(response.verification_result);
+      } catch (err) {
+        console.error('Re-analysis error:', err);
+        setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 품목 선택 취소 처리 (전체 초기화)
+  const handleFoodSelectionCancel = () => {
+    setFoodSelectionDialogOpen(false);
+    setParsedFood('');
+    setSimilarFoods([]);
+    // 전체 상태 초기화
+    setFile(null);
+    setParsingResult(null);
+    setVerificationResults(null);
+    setError(null);
+    
+    // 파일 인풋 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
   
   // 파일 삭제 핸들러
@@ -565,6 +743,15 @@ const CertificateAnalysisPage = () => {
         open={duplicateDialogOpen}
         onClose={handleOverwriteCancel}
         onConfirm={handleOverwriteConfirm}
+      />
+
+      {/* 품목 선택 다이얼로그 */}
+      <FoodSelectionDialog 
+        open={foodSelectionDialogOpen}
+        onClose={handleFoodSelectionCancel}
+        onConfirm={handleFoodSelectionConfirm}
+        parsedFood={parsedFood}
+        similarFoods={similarFoods}
       />
 
       {/* 오류 표시 */}

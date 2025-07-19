@@ -282,6 +282,51 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(list(results))
 
     @action(detail=False, methods=['GET'])
+    def find_similar_foods(self, request):
+        """파싱된 품목명과 유사한 DB 품목들을 검색하여 반환"""
+        parsed_food = request.query_params.get('food', '').strip()
+        
+        if not parsed_food:
+            return Response({'error': '검색할 품목명이 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 1. 정확한 매칭 먼저 시도
+        exact_match = PesticideLimit.objects.filter(
+            food_name__iexact=parsed_food
+        ).values_list('food_name', flat=True).distinct().first()
+        
+        if exact_match:
+            return Response({
+                'exact_match': True,
+                'food_name': exact_match
+            })
+        
+        # 2. 부분 매칭으로 유사한 품목들 찾기
+        similar_foods = []
+        
+        # 키워드 추출 (공백, 특수문자로 분리)
+        import re
+        keywords = re.findall(r'[가-힣a-zA-Z]+', parsed_food)
+        
+        for keyword in keywords:
+            if len(keyword) >= 2:  # 2글자 이상 키워드만 검색
+                matches = PesticideLimit.objects.filter(
+                    food_name__icontains=keyword
+                ).values_list('food_name', flat=True).distinct()[:20]
+                
+                for match in matches:
+                    if match not in similar_foods:
+                        similar_foods.append(match)
+        
+        # 중복 제거 및 정렬
+        similar_foods = sorted(list(set(similar_foods)))[:10]
+        
+        return Response({
+            'exact_match': False,
+            'parsed_food': parsed_food,
+            'similar_foods': similar_foods
+        })
+
+    @action(detail=False, methods=['GET'])
     def search_logs(self, request):
         """검색 로그를 조회하는 엔드포인트"""
         # 관리자만 접근 가능하도록 설정
