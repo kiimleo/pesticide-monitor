@@ -45,7 +45,7 @@ fi
 # Google Drive에 백업 파일 업로드 (rclone이 설치된 경우만)
 if command -v rclone >/dev/null 2>&1; then
     echo "Google Drive 업로드 시작..." >> $LOG_FILE
-    if rclone copy "$BACKUP_PATH" gdrive:pesticide_backups/; then
+    if rclone copy "$BACKUP_PATH" gdrive:develop_findpest/pesticide_backups/; then
         echo "Google Drive 업로드 완료: $(date)" >> $LOG_FILE
     else
         echo "WARNING: Google Drive 업로드 실패: $(date)" >> $LOG_FILE

@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # 상대 경로 사용 (더 유연함)
         backup_dir = os.path.join(settings.BASE_DIR, 'backups')
-        google_drive_dir = "gdrive:pesticide_backups"
+        google_drive_dir = "gdrive:develop_findpest/pesticide_backups"
         min_size = 1000000  # 최소 1MB
         alerts = []
 
