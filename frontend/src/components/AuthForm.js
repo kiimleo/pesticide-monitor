@@ -1,6 +1,6 @@
 // frontend/src/components/AuthForm.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -27,6 +27,25 @@ const AuthForm = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [csrfToken, setCsrfToken] = useState('');
+
+  // CSRF 토큰 가져오기
+  useEffect(() => {
+    const getCsrfToken = async () => {
+      try {
+        const response = await fetch('/api/csrf/', {
+          method: 'GET',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCsrfToken(data.csrfToken);
+        }
+      } catch (err) {
+        console.log('CSRF token fetch failed:', err);
+      }
+    };
+    getCsrfToken();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
@@ -107,11 +126,19 @@ const AuthForm = ({ onLogin }) => {
         };
       }
 
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // CSRF 토큰이 있으면 헤더에 추가
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
+        credentials: 'include', // 쿠키 포함
         body: JSON.stringify(data)
       });
 

@@ -22,8 +22,7 @@ from .models import LimitConditionCode, PesticideLimit, PesticideDetail
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
 from django.http import HttpResponse
 from django.http import JsonResponse
-
-from django.contrib.auth import get_user_model
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -533,3 +532,8 @@ def index(request):
 
 def health_check(request):
     return JsonResponse({"status": "ok"}, status=200)
+
+def csrf_token_view(request):
+    """CSRF 토큰을 제공하는 뷰"""
+    token = get_token(request)
+    return JsonResponse({'csrfToken': token})
