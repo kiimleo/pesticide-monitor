@@ -20,10 +20,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "env-cmd": "^10.1.0"
   },
   "scripts": {
-    "start": "env-cmd -f .env.development react-scripts start", 
+    "start": "env-cmd -f .env.development react-scripts start",
     "start:external": "env-cmd -f .env.development react-scripts start --host 0.0.0.0",
     "start:prod": "env-cmd -f .env.production react-scripts start --host 0.0.0.0",
     "build": "env-cmd -f .env.production react-scripts build",
