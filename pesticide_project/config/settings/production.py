@@ -50,8 +50,32 @@ DATABASES = {
 # 정적 파일 설정
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# React 빌드 파일 경로 추가
+REACT_BUILD_DIR = os.path.join(os.path.dirname(BASE_DIR), 'frontend', 'build')
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
+    os.path.join(REACT_BUILD_DIR, 'static'),  # React 빌드된 정적 파일
+]
+
+# 템플릿 설정
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            REACT_BUILD_DIR,  # React 빌드 디렉토리
+        ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 # 로깅 설정
