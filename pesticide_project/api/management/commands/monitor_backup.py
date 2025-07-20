@@ -13,7 +13,8 @@ class Command(BaseCommand):
     help = 'Monitor database backup status'
 
     def handle(self, *args, **options):
-        backup_dir = "/Users/leokim/PPJT/pesticide-monitor/pesticide_project/backups"
+        # 상대 경로 사용 (더 유연함)
+        backup_dir = os.path.join(settings.BASE_DIR, 'backups')
         google_drive_dir = "gdrive:pesticide_backups"
         min_size = 1000000  # 최소 1MB
         alerts = []
@@ -24,7 +25,8 @@ class Command(BaseCommand):
 
             # 1. 로컬 백업 확인
             if not os.path.exists(backup_dir):
-                alerts.append("백업 디렉토리가 존재하지 않습니다!")
+                alerts.append(f"백업 디렉토리가 존재하지 않습니다: {backup_dir}")
+                return
 
             files = [f for f in os.listdir(backup_dir) if f.endswith('.sql')]
             if not files:
@@ -54,14 +56,19 @@ class Command(BaseCommand):
                 if file_size < min_size:
                     alerts.append(f"백업 파일 크기가 너무 작습니다: {file_size} bytes")
 
-                # Google Drive 백업 확인
+                # Google Drive 백업 확인 (rclone이 설치된 경우만)
                 try:
-                    self.stdout.write("Google Drive 백업 확인 중...")
-                    result = subprocess.run(['rclone', 'ls', f"{google_drive_dir}/{latest_backup}"],
-                                            capture_output=True, text=True)
-                    self.stdout.write(f"rclone 결과: {result.returncode}")
-                    if result.returncode != 0:
-                        alerts.append(f"Google Drive에 최신 백업 파일이 없습니다: {latest_backup}")
+                    # rclone 설치 여부 확인
+                    rclone_check = subprocess.run(['which', 'rclone'], capture_output=True)
+                    if rclone_check.returncode == 0:
+                        self.stdout.write("Google Drive 백업 확인 중...")
+                        result = subprocess.run(['rclone', 'ls', f"{google_drive_dir}/{latest_backup}"],
+                                                capture_output=True, text=True)
+                        self.stdout.write(f"rclone 결과: {result.returncode}")
+                        if result.returncode != 0:
+                            alerts.append(f"Google Drive에 최신 백업 파일이 없습니다: {latest_backup}")
+                    else:
+                        alerts.append("rclone이 설치되지 않아 Google Drive 백업을 확인할 수 없습니다")
                 except Exception as e:
                     alerts.append(f"Google Drive 백업 확인 중 오류 발생: {str(e)}")
 
