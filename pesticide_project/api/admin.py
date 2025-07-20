@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
-from .models import PesticideLimit, LimitConditionCode, SearchLog
+from .models import PesticideLimit, LimitConditionCode, SearchLog, User, PasswordResetToken
 
 @admin.register(SearchLog)
 class SearchLogAdmin(admin.ModelAdmin):
@@ -68,3 +68,52 @@ class PesticideLimitAdmin(admin.ModelAdmin):
 @admin.register(LimitConditionCode)
 class LimitConditionCodeAdmin(admin.ModelAdmin):
     list_display = ('code', 'description')
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('email', 'organization', 'is_active', 'is_staff', 'date_joined', 'last_login')
+    list_filter = ('is_active', 'is_staff', 'is_superuser', 'date_joined')
+    search_fields = ('email', 'organization')
+    readonly_fields = ('date_joined', 'last_login', 'password')
+    ordering = ('-date_joined',)
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('email', 'organization')
+        }),
+        ('권한', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        }),
+        ('중요한 날짜', {
+            'fields': ('last_login', 'date_joined')
+        }),
+        ('비밀번호', {
+            'fields': ('password',),
+            'description': '비밀번호 변경은 별도 링크를 사용하세요.'
+        }),
+    )
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # 기존 사용자 편집 시
+            return self.readonly_fields + ('email',)
+        return self.readonly_fields
+
+@admin.register(PasswordResetToken)
+class PasswordResetTokenAdmin(admin.ModelAdmin):
+    list_display = ('user', 'token', 'created_at', 'used', 'is_valid_display')
+    list_filter = ('used', 'created_at')
+    search_fields = ('user__email', 'token')
+    readonly_fields = ('token', 'created_at', 'is_valid_display')
+    ordering = ('-created_at',)
+    
+    def is_valid_display(self, obj):
+        """토큰 유효성 표시"""
+        if obj.is_valid():
+            return "✅ 유효"
+        else:
+            return "❌ 만료/사용됨"
+    is_valid_display.short_description = '유효성'
+    
+    def has_add_permission(self, request):
+        """토큰 직접 생성 방지"""
+        return False
