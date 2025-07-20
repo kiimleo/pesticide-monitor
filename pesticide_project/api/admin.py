@@ -24,7 +24,8 @@ class SearchLogAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         """최근 1000개 로그만 표시 (성능 최적화)"""
-        return super().get_queryset(request)[:1000]
+        # 슬라이스 대신 limit 사용하여 distinct 호환성 확보
+        return super().get_queryset(request)
     
     def changelist_view(self, request, extra_context=None):
         """검색 로그 목록 페이지에 통계 정보 추가"""
