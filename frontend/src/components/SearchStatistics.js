@@ -34,9 +34,9 @@ const SearchStatistics = () => {
     };
 
     fetchStats();
-    // 5분마다 자동 새로고침
-    const interval = setInterval(fetchStats, 300000);
-    return () => clearInterval(interval);
+    // 자동 새로고침 비활성화
+    // const interval = setInterval(fetchStats, 300000);
+    // return () => clearInterval(interval);
   }, []);
 
   if (loading) return (
