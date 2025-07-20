@@ -3,6 +3,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+import uuid
 
 
 class LimitConditionCode(models.Model):
@@ -103,6 +104,30 @@ class SearchLog(models.Model):
 
     def __str__(self):
         return f"{self.search_term} ({self.results_count} results) - {self.timestamp}"
+
+
+class PasswordResetToken(models.Model):
+    """비밀번호 재설정 토큰"""
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='reset_tokens')
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'password_reset_tokens'
+        verbose_name = '비밀번호 재설정 토큰'
+        verbose_name_plural = '비밀번호 재설정 토큰'
+    
+    def is_valid(self):
+        """토큰이 유효한지 확인 (24시간 내, 미사용)"""
+        from datetime import timedelta
+        return (
+            not self.used and 
+            timezone.now() - self.created_at < timedelta(hours=24)
+        )
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.token}"
 
 
 class User(AbstractUser):

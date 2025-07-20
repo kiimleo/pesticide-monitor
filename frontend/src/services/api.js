@@ -91,12 +91,18 @@ export const api = {
     }
   },
 
-  // 농약 목록 조회
-  getPesticides: async (params) => {
+  // 농약 목록 조회 (토큰 인증 필요)
+  getPesticides: async (params, token) => {
     try {
       console.log('Pesticides params:', params);
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Token ${token}`;
+      }
+      
       const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
         params,
+        headers,
       });
       return response.data;
     } catch (error) {

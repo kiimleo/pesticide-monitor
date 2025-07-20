@@ -1,15 +1,39 @@
 // path of this code: frontend/src/App.js
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import SignupForm from './components/SignupForm';
-import React, { useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper, Tabs, Tab } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Typography, Box, CircularProgress, Paper, Tabs, Tab, Button, AppBar, Toolbar } from '@mui/material';
 import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
 import SearchStatistics from './components/SearchStatistics';
 import PesticideImage from './components/PesticideImage';
-import CertificateAnalysisPage from './components/CertificateAnalysisPage'; // 새로 추가할 컴포넌트
+import CertificateAnalysisPage from './components/CertificateAnalysisPage';
+import AuthForm from './components/AuthForm';
+import PasswordReset from './components/PasswordReset';
+
+// 헤더 컴포넌트
+const Header = ({ user, onLogout }) => {
+  return (
+    <AppBar position="static" sx={{ mb: 3 }}>
+      <Toolbar>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          FindPest - 농약 잔류허용기준 검색
+        </Typography>
+        {user && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2">
+              {user.organization}의 {user.email}님
+            </Typography>
+            <Button color="inherit" onClick={onLogout}>
+              로그아웃
+            </Button>
+          </Box>
+        )}
+      </Toolbar>
+    </AppBar>
+  );
+};
 
 // 탭 네비게이션 컴포넌트
 const NavigationTabs = () => {
@@ -45,11 +69,11 @@ const NavigationTabs = () => {
   );
 };
 
-function MainContent() {
+function MainContent({ token }) {
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchedFood, setSearchedFood] = useState('');  // 검색된 식품명 상태 추가
+  const [searchedFood, setSearchedFood] = useState('');
 
   const resetResults = () => {
     setPesticides([]);
@@ -63,18 +87,24 @@ function MainContent() {
       setError(null);
       setSearchedFood(filters.food);
       
-      // 앞뒤 공백만 제거하도록 수정
       const params = {
-      pesticide: filters.pesticide.trim(),  // 앞뒤 공백만 제거
-      food: filters.food.trim()  // 앞뒤 공백만 제거
+        pesticide: filters.pesticide.trim(),
+        food: filters.food.trim()
       };
       
       try {
-        const data = await api.getPesticides(params);
+        const data = await api.getPesticides(params, token);
         setPesticides(data);
         setError(null);
       } catch (error) {
-        if (error.response?.status === 404) {
+        if (error.response?.status === 401) {
+          setError({
+            type: "auth_error",
+            severity: "error",
+            title: "인증 오류",
+            message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
+          });
+        } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
           
           if (errorType === 'input_error') {
@@ -189,16 +219,80 @@ function AdminRedirect() {
   return null;
 }
 
-// 메인 App 컴포넌트 수정
+// 메인 App 컴포넌트
 function App() {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 로컬 스토리지에서 사용자 정보 확인
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  const handleLogin = (userData, userToken) => {
+    setUser(userData);
+    setToken(userToken);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // 서버에 로그아웃 요청
+      await fetch('/api/users/logout/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // 로컬 스토리지 클리어
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      setToken(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // 로그인하지 않은 경우 인증 폼 표시
+  if (!user || !token) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/password-reset/:token" element={<PasswordReset />} />
+          <Route path="*" element={<AuthForm onLogin={handleLogin} />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  // 로그인한 경우 메인 앱 표시
   return (
     <Router>
+      <Header user={user} onLogout={handleLogout} />
       <Container maxWidth="lg">
         <Routes>
           <Route path="/" element={
             <>
               <NavigationTabs />
-              <MainContent />
+              <MainContent token={token} />
             </>
           } />
           <Route path="/certificate-analysis" element={
@@ -207,7 +301,6 @@ function App() {
               <CertificateAnalysisPage />
             </>
           } />
-          <Route path="/signup" element={<SignupForm />} />
           <Route path="/statistics" element={<SearchStatistics />} />
           <Route path="/pesticide-image" element={<PesticideImage />} />
           <Route path="/admin/*" element={<AdminRedirect />} />

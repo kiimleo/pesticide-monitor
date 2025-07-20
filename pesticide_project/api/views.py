@@ -5,11 +5,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import ValidationError
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import login, logout
 from django.db.models import Q, Count, Case, When
 from django.utils import timezone
 from datetime import timedelta
-from .serializers import UserSerializer
-from .models import User, SearchLog, FoodCategory
+from django.core.mail import send_mail
+from django.conf import settings
+from .serializers import (
+    UserSerializer, UserSignupSerializer, UserLoginSerializer,
+    PasswordResetRequestSerializer, PasswordResetSerializer
+)
+from .models import User, SearchLog, FoodCategory, PasswordResetToken
 from rest_framework.filters import SearchFilter
 from .models import LimitConditionCode, PesticideLimit, PesticideDetail
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
@@ -24,23 +31,165 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'signup']:
+        if self.action in ['signup', 'login', 'password_reset_request', 'password_reset']:
             return [AllowAny()]
         return [IsAuthenticated()]
 
+    def get_serializer_class(self):
+        if self.action == 'signup':
+            return UserSignupSerializer
+        elif self.action == 'login':
+            return UserLoginSerializer
+        elif self.action == 'password_reset_request':
+            return PasswordResetRequestSerializer
+        elif self.action == 'password_reset':
+            return PasswordResetSerializer
+        return UserSerializer
+
     @action(detail=False, methods=['post'])
     def signup(self, request):
+        """회원가입"""
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            # 토큰 생성
+            token, created = Token.objects.get_or_create(user=user)
             return Response({
                 'message': '회원가입이 완료되었습니다.',
-                'user': serializer.data
+                'token': token.key,
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'organization': user.organization
+                }
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'])
+    def login(self, request):
+        """로그인"""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'message': '로그인이 완료되었습니다.',
+                'token': token.key,
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'organization': user.organization
+                }
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def logout(self, request):
+        """로그아웃"""
+        if request.user.is_authenticated:
+            try:
+                request.user.auth_token.delete()
+            except:
+                pass
+        return Response({'message': '로그아웃이 완료되었습니다.'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'])
+    def password_reset_request(self, request):
+        """비밀번호 재설정 요청"""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email=email)
+            
+            # 기존 토큰 무효화
+            PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+            
+            # 새 토큰 생성
+            reset_token = PasswordResetToken.objects.create(user=user)
+            
+            # 이메일 전송
+            reset_url = f"https://findpest.kr/password-reset/{reset_token.token}"
+            
+            try:
+                send_mail(
+                    subject='[FindPest] 비밀번호 재설정',
+                    message=f'''안녕하세요, {user.organization}의 {user.email}님
+
+비밀번호 재설정을 요청하셨습니다.
+아래 링크를 클릭하여 새 비밀번호를 설정해주세요.
+
+{reset_url}
+
+이 링크는 24시간 동안 유효합니다.
+만약 비밀번호 재설정을 요청하지 않으셨다면, 이 이메일을 무시해주세요.
+
+---
+FindPest 팀''',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                
+                return Response({
+                    'message': '비밀번호 재설정 링크가 이메일로 전송되었습니다.'
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                return Response({
+                    'error': '이메일 전송에 실패했습니다.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def password_reset(self, request):
+        """비밀번호 재설정 (토큰 필요)"""
+        token_str = request.data.get('token')
+        if not token_str:
+            return Response({
+                'error': '토큰이 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token_str)
+            if not reset_token.is_valid():
+                return Response({
+                    'error': '유효하지 않거나 만료된 토큰입니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid():
+                user = reset_token.user
+                
+                # 기존 비밀번호와 동일한지 확인
+                new_password = serializer.validated_data['new_password']
+                if user.check_password(new_password):
+                    return Response({
+                        'error': '기존 비밀번호와 동일합니다. 다른 비밀번호를 사용해주세요.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # 비밀번호 변경
+                user.set_password(new_password)
+                user.save()
+                
+                # 토큰 사용 처리
+                reset_token.used = True
+                reset_token.save()
+                
+                return Response({
+                    'message': '비밀번호가 성공적으로 변경되었습니다.'
+                }, status=status.HTTP_200_OK)
+                
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except PasswordResetToken.DoesNotExist:
+            return Response({
+                'error': '유효하지 않은 토큰입니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['get'])
     def me(self, request):
+        """현재 사용자 정보"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
@@ -66,6 +215,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PesticideLimitSerializer
     filter_backends = [SearchFilter]
     search_fields = ['pesticide_name_kr', 'pesticide_name_en', 'food_name']
+    permission_classes = [IsAuthenticated]  # 로그인 필수
 
     def list(self, request):
         pesticide = request.query_params.get('pesticide', '').strip()
