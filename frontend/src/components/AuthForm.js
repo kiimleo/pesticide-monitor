@@ -12,8 +12,11 @@ import {
   FormControlLabel,
   Checkbox,
   Link,
-  Divider
+  Divider,
+  IconButton,
+  InputAdornment
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const AuthForm = ({ onLogin }) => {
   const [mode, setMode] = useState('login'); // 'login', 'signup', 'forgot'
@@ -27,25 +30,9 @@ const AuthForm = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [csrfToken, setCsrfToken] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
-  // CSRF 토큰 가져오기
-  useEffect(() => {
-    const getCsrfToken = async () => {
-      try {
-        const response = await fetch('/api/csrf/', {
-          method: 'GET',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCsrfToken(data.csrfToken);
-        }
-      } catch (err) {
-        console.log('CSRF token fetch failed:', err);
-      }
-    };
-    getCsrfToken();
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
@@ -83,7 +70,7 @@ const AuthForm = ({ onLogin }) => {
         setError('비밀번호에 영문자가 포함되어야 합니다.');
         return false;
       }
-      if (!/\\d/.test(formData.password)) {
+      if (!/\d/.test(formData.password)) {
         setError('비밀번호에 숫자가 포함되어야 합니다.');
         return false;
       }
@@ -106,13 +93,13 @@ const AuthForm = ({ onLogin }) => {
       let data = {};
 
       if (mode === 'login') {
-        url = '/api/users/login/';
+        url = 'http://localhost:8000/api/users/login/';
         data = {
           email: formData.email,
           password: formData.password
         };
       } else if (mode === 'signup') {
-        url = '/api/users/signup/';
+        url = 'http://localhost:8000/api/users/signup/';
         data = {
           email: formData.email,
           password: formData.password,
@@ -120,7 +107,7 @@ const AuthForm = ({ onLogin }) => {
           organization: formData.organization
         };
       } else if (mode === 'forgot') {
-        url = '/api/users/password_reset_request/';
+        url = 'http://localhost:8000/api/users/password_reset_request/';
         data = {
           email: formData.email
         };
@@ -129,11 +116,6 @@ const AuthForm = ({ onLogin }) => {
       const headers = {
         'Content-Type': 'application/json',
       };
-
-      // CSRF 토큰이 있으면 헤더에 추가
-      if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-      }
 
       const response = await fetch(url, {
         method: 'POST',
@@ -238,12 +220,25 @@ const AuthForm = ({ onLogin }) => {
               fullWidth
               label="비밀번호"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange}
               margin="normal"
               required
               helperText={mode === 'signup' ? '최소 8자, 영문+숫자 포함' : ''}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
           )}
 
@@ -253,11 +248,24 @@ const AuthForm = ({ onLogin }) => {
                 fullWidth
                 label="비밀번호 확인"
                 name="password_confirm"
-                type="password"
+                type={showPasswordConfirm ? 'text' : 'password'}
                 value={formData.password_confirm}
                 onChange={handleChange}
                 margin="normal"
                 required
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password confirm visibility"
+                        onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                        edge="end"
+                      >
+                        {showPasswordConfirm ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
               <TextField
                 fullWidth

@@ -24,6 +24,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -46,6 +47,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     @action(detail=False, methods=['post'])
+    @csrf_exempt
     def signup(self, request):
         """회원가입"""
         serializer = self.get_serializer(data=request.data)
@@ -65,6 +67,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
+    @csrf_exempt
     def login(self, request):
         """로그인"""
         serializer = self.get_serializer(data=request.data)
@@ -93,6 +96,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'message': '로그아웃이 완료되었습니다.'}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
+    @csrf_exempt
     def password_reset_request(self, request):
         """비밀번호 재설정 요청"""
         serializer = self.get_serializer(data=request.data)
@@ -214,7 +218,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PesticideLimitSerializer
     filter_backends = [SearchFilter]
     search_fields = ['pesticide_name_kr', 'pesticide_name_en', 'food_name']
-    permission_classes = [IsAuthenticated]  # 로그인 필수
+    permission_classes = [AllowAny]  # 공개 API
 
     def list(self, request):
         pesticide = request.query_params.get('pesticide', '').strip()
@@ -394,7 +398,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(stats)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], permission_classes=[AllowAny])
     def autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
 
@@ -412,7 +416,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(results)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], permission_classes=[AllowAny])
     def food_autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
 
@@ -537,3 +541,20 @@ def csrf_token_view(request):
     """CSRF 토큰을 제공하는 뷰"""
     token = get_token(request)
     return JsonResponse({'csrfToken': token})
+
+@csrf_exempt
+@require_http_methods(["GET", "POST", "OPTIONS"])
+def test_cors(request):
+    """CORS 테스트용 간단한 엔드포인트"""
+    if request.method == 'OPTIONS':
+        response = JsonResponse({})
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
+    
+    return JsonResponse({
+        'message': 'CORS test successful!',
+        'method': request.method,
+        'status': 'ok'
+    })

@@ -11,7 +11,8 @@ from api.views import (
    UserViewSet,
    index,
    health_check,
-   csrf_token_view
+   csrf_token_view,
+   test_cors
 )
 from django.conf import settings
 from api import certificate_parser
@@ -32,6 +33,7 @@ router.register(r'pesticides', PesticideLimitViewSet, basename='pesticide')
 urlpatterns = [
     path('health/', health_check),
     path('api/csrf/', csrf_token_view, name='csrf-token'),  # CSRF 토큰 엔드포인트
+    path('api/test-cors/', test_cors, name='test-cors'),  # CORS 테스트 엔드포인트
     path('api/auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
     path('api/admin/', admin.site.urls),

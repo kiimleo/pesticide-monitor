@@ -37,7 +37,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -98,16 +97,17 @@ AUTH_USER_MODEL = 'api.User'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ]
 }
 
-# CORS base settings
-CORS_ALLOW_CREDENTIALS = True
+# Allowed hosts
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'findpest.kr', 'www.findpest.kr']
+
+# CORS 기본 설정 (로컬 환경에서는 local.py에서 덮어씀)
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -117,27 +117,15 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# Allowed hosts
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'findpest.kr', 'www.findpest.kr']
-
-# Cross-Origin Resource Sharing (CORS) 설정
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React 프론트엔드 (로컬 개발 환경)
-    "http://findpest.kr",
-    "https://www.findpest.kr",
-]
-
-# CORS 헤더 노출 설정 (필요할 경우 추가)
 CORS_ALLOW_HEADERS = [
     'content-type',
     'authorization',
     'accept',
     'origin',
     'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
-
-# Credential 허용 (필요할 경우)
-CORS_ALLOW_CREDENTIALS = True
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

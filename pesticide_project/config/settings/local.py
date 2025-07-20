@@ -5,7 +5,7 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'findpest.kr', 'www.findpest.kr']
 
 # Database
 DATABASES = {
@@ -19,11 +19,9 @@ DATABASES = {
     }
 }
 
-# CORS settings for local development
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React 개발 서버
-    "http://127.0.0.1:3000",  # React 개발 서버 (IP 주소 사용시)
-]
+# CORS settings for local development - 모든 오리진 허용
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # 로컬 개발환경에서의 정적 파일 설정
 STATIC_URL = '/static/'
