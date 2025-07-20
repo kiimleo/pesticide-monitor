@@ -18,7 +18,7 @@ const Header = ({ user, onLogout }) => {
     <AppBar position="static" sx={{ mb: 3 }}>
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          FindPest - Ai 검색 서비스
+          FindPest - Ai 기반 농약 검색 서비스
         </Typography>
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
