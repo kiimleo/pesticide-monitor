@@ -45,7 +45,8 @@ const SignupForm = () => {
 
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/signup/', {
+      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://findpest.kr/api";
+      const response = await fetch(`${API_BASE_URL}/users/signup/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

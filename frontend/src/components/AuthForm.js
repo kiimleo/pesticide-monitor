@@ -92,14 +92,16 @@ const AuthForm = ({ onLogin }) => {
       let url = '';
       let data = {};
 
+      const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://findpest.kr/api";
+
       if (mode === 'login') {
-        url = 'http://localhost:8000/api/users/login/';
+        url = `${API_BASE_URL}/users/login/`;
         data = {
           email: formData.email,
           password: formData.password
         };
       } else if (mode === 'signup') {
-        url = 'http://localhost:8000/api/users/signup/';
+        url = `${API_BASE_URL}/users/signup/`;
         data = {
           email: formData.email,
           password: formData.password,
@@ -107,7 +109,7 @@ const AuthForm = ({ onLogin }) => {
           organization: formData.organization
         };
       } else if (mode === 'forgot') {
-        url = 'http://localhost:8000/api/users/password_reset_request/';
+        url = `${API_BASE_URL}/users/password_reset_request/`;
         data = {
           email: formData.email
         };
