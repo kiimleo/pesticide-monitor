@@ -36,7 +36,6 @@ urlpatterns = [
     path('api/test-cors/', test_cors, name='test-cors'),  # CORS 테스트 엔드포인트
     path('api/auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
-    path('api/admin/', admin.site.urls),
     path('api/', include(router.urls)),  # API 라우터 포함
     path('api/certificates/upload/', certificate_parser.upload_certificate, name='upload-certificate'),
     
