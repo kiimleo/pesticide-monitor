@@ -1,7 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .models import PesticideLimit
@@ -58,6 +59,7 @@ def calculate_similarity(str1, str2):
 @csrf_exempt
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
+@permission_classes([AllowAny])
 
 # _____ 전체 실행 흐름 ______________
 # 업로드 → upload_certificate() 시작
