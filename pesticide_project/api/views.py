@@ -16,7 +16,7 @@ from .serializers import (
     UserSerializer, UserSignupSerializer, UserLoginSerializer,
     PasswordResetRequestSerializer, PasswordResetSerializer
 )
-from .models import User, SearchLog, FoodCategory, PasswordResetToken
+from .models import User, SearchLog, FoodCategory, PasswordResetToken, GuestSession
 from rest_framework.filters import SearchFilter
 from .models import LimitConditionCode, PesticideLimit, PesticideDetail
 from .serializers import LimitConditionCodeSerializer, PesticideLimitSerializer
@@ -220,10 +220,48 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['pesticide_name_kr', 'pesticide_name_en', 'food_name']
     permission_classes = [AllowAny]  # 공개 API
 
+    def _check_guest_query_limit(self, request):
+        """게스트 사용자의 쿼리 제한을 확인"""
+        # 인증된 사용자는 제한 없음
+        if request.user.is_authenticated:
+            return True, None
+        
+        # 세션 키 및 IP 주소 가져오기
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+        
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        
+        # 게스트 세션 가져오기 또는 생성
+        guest_session, created = GuestSession.objects.get_or_create(
+            session_key=session_key,
+            defaults={'ip_address': ip, 'query_count': 0}
+        )
+        
+        return guest_session.can_query(), guest_session
+
     def list(self, request):
         pesticide = request.query_params.get('pesticide', '').strip()
         food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
+
+        # 게스트 사용자 쿼리 제한 확인
+        if pesticide and food:  # 실제 검색 쿼리인 경우만 체크
+            can_query, guest_session = self._check_guest_query_limit(request)
+            if not can_query:
+                return Response({
+                    'error': 'query_limit_exceeded',
+                    'message': '무료 검색 횟수가 초과되었습니다. 회원가입을 통해 무제한 검색을 이용해보세요.',
+                    'query_count': guest_session.query_count,
+                    'max_queries': 5,
+                    'require_signup': True
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         # 검색 로그 출력
         if pesticide and food:
@@ -256,6 +294,13 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(direct_matches, many=True)
             # 검색 결과가 있는 경우 로깅
             self._log_search(pesticide, food, direct_matches.count())
+            
+            # 게스트 사용자의 쿼리 카운트 증가
+            if not request.user.is_authenticated:
+                can_query, guest_session = self._check_guest_query_limit(request)
+                if guest_session:
+                    guest_session.increment_query()
+            
             return Response(serializer.data)
 
         # 직접 매칭이 없는 경우에만 FoodCategory 확인
@@ -268,6 +313,13 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                         match.matching_type = 'sub'
                         match.original_food_name = food
                     serializer = self.get_serializer(sub_matches, many=True)
+                    
+                    # 게스트 사용자의 쿼리 카운트 증가
+                    if not request.user.is_authenticated:
+                        can_query, guest_session = self._check_guest_query_limit(request)
+                        if guest_session:
+                            guest_session.increment_query()
+                    
                     return Response(serializer.data)
 
             if category.main_category:
@@ -277,6 +329,13 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                         match.matching_type = 'main'
                         match.original_food_name = food
                     serializer = self.get_serializer(main_matches, many=True)
+                    
+                    # 게스트 사용자의 쿼리 카운트 증가
+                    if not request.user.is_authenticated:
+                        can_query, guest_session = self._check_guest_query_limit(request)
+                        if guest_session:
+                            guest_session.increment_query()
+                    
                     return Response(serializer.data)
 
         except FoodCategory.DoesNotExist:
@@ -402,6 +461,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     def autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
 
+        # 세션 초기화 (게스트 사용자용)
+        if not request.session.session_key:
+            request.session.create()
+
         # 자동완성 로그 출력
         if len(query) >= 2:
             print(format_log_message('autocomplete', query=query))
@@ -419,6 +482,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['GET'], permission_classes=[AllowAny])
     def food_autocomplete(self, request):
         query = request.query_params.get('query', '').strip()
+
+        # 세션 초기화 (게스트 사용자용)
+        if not request.session.session_key:
+            request.session.create()
 
         # 자동완성 로그 출력
         if len(query) >= 1: # 한글만 입력해도 자동완성 시도
@@ -499,6 +566,27 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             'exact_match': False,
             'parsed_food': parsed_food,
             'similar_foods': similar_foods
+        })
+
+    @action(detail=False, methods=['GET'])
+    def guest_query_status(self, request):
+        """게스트 사용자의 쿼리 사용 현황 확인"""
+        if request.user.is_authenticated:
+            return Response({
+                'is_authenticated': True,
+                'query_count': None,
+                'max_queries': None,
+                'remaining_queries': None
+            })
+        
+        can_query, guest_session = self._check_guest_query_limit(request)
+        
+        return Response({
+            'is_authenticated': False,
+            'query_count': guest_session.query_count if guest_session else 0,
+            'max_queries': 5,
+            'remaining_queries': max(0, 5 - (guest_session.query_count if guest_session else 0)),
+            'can_query': can_query
         })
 
     @action(detail=False, methods=['GET'])

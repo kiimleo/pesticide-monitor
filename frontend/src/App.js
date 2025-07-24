@@ -2,7 +2,8 @@
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper, Tabs, Tab, Button, AppBar, Toolbar } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Paper, Tabs, Tab, Button, AppBar, Toolbar, Alert, Chip } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import FilterPanel from './components/FilterPanel';
 import PesticideTable from './components/PesticideTable';
 import { api } from './services/api';
@@ -14,19 +15,53 @@ import PasswordReset from './components/PasswordReset';
 
 // 헤더 컴포넌트
 const Header = ({ user, onLogout }) => {
+  const navigate = useNavigate();
+  
   return (
     <AppBar position="static" sx={{ mb: 3 }}>
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+        <Typography 
+          variant="h6" 
+          component={Link}
+          to="/"
+          sx={{ 
+            flexGrow: 1,
+            textDecoration: 'none',
+            color: 'inherit',
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 0.8
+            }
+          }}
+        >
           FindPest - Ai 기반 농약 검색 서비스
         </Typography>
-        {user && (
+        {user ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2">
               {user.organization}의 {user.email}님
             </Typography>
             <Button color="inherit" onClick={onLogout}>
               로그아웃
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button 
+              color="inherit" 
+              onClick={() => navigate('/auth?mode=login')}
+              variant="text"
+              size="small"
+            >
+              로그인
+            </Button>
+            <Button 
+              color="inherit" 
+              onClick={() => navigate('/auth?mode=signup')}
+              variant="outlined"
+              size="small"
+            >
+              회원가입
             </Button>
           </Box>
         )}
@@ -69,11 +104,28 @@ const NavigationTabs = () => {
   );
 };
 
-function MainContent({ token }) {
+function MainContent({ token, user }) {
+  const navigate = useNavigate();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchedFood, setSearchedFood] = useState('');
+  const [guestQueryStatus, setGuestQueryStatus] = useState(null);
+
+  // 게스트 쿼리 상태 확인
+  useEffect(() => {
+    if (!user) {  // 게스트 사용자인 경우에만
+      const fetchGuestQueryStatus = async () => {
+        try {
+          const status = await api.getGuestQueryStatus();
+          setGuestQueryStatus(status);
+        } catch (error) {
+          console.error('게스트 쿼리 상태 확인 오류:', error);
+        }
+      };
+      fetchGuestQueryStatus();
+    }
+  }, [user, pesticides]); // 검색 후에도 상태 업데이트
 
   const resetResults = () => {
     setPesticides([]);
@@ -103,6 +155,19 @@ function MainContent({ token }) {
             severity: "error",
             title: "인증 오류",
             message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
+          });
+        } else if (error.response?.status === 429) {
+          // 쿼리 제한 초과 에러 처리
+          setError({
+            type: "query_limit_exceeded",
+            severity: "warning",
+            title: "검색 횟수 제한",
+            message: error.response.data.message,
+            details: {
+              query_count: error.response.data.query_count,
+              max_queries: error.response.data.max_queries,
+              require_signup: error.response.data.require_signup
+            }
           });
         } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
@@ -154,6 +219,40 @@ function MainContent({ token }) {
         </Typography>
       </Box>
       
+      {/* 게스트 사용자 쿼리 상태 표시 */}
+      {!user && guestQueryStatus && (
+        <Alert 
+          severity={guestQueryStatus.remaining_queries <= 1 ? "warning" : "info"}
+          sx={{ mb: 3 }}
+          action={
+            guestQueryStatus.remaining_queries === 0 ? (
+              <Button 
+                color="inherit" 
+                size="small" 
+                variant="outlined"
+                onClick={() => navigate('/auth?mode=signup')}
+              >
+                회원가입
+              </Button>
+            ) : null
+          }
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2">
+              {guestQueryStatus.remaining_queries > 0 
+                ? `${guestQueryStatus.remaining_queries}회 검색 후 회원가입 필요` 
+                : "검색 기능을 더 사용하려면 회원 가입 후 이용해 주세요."}
+            </Typography>
+            <Chip 
+              label={`${guestQueryStatus.query_count}/${guestQueryStatus.max_queries}`}
+              size="small"
+              color={guestQueryStatus.remaining_queries <= 1 ? "warning" : "primary"}
+              variant="outlined"
+            />
+          </Box>
+        </Alert>
+      )}
+      
       <FilterPanel onFilter={handleFilter} onReset={resetResults} />
       
       {error && (
@@ -192,6 +291,24 @@ function MainContent({ token }) {
                     </Box>
                   </Typography>
                 </Box>
+              </Box>
+            )}
+            {error.type === "query_limit_exceeded" && error.details?.require_signup && (
+              <Box sx={{ mt: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary"
+                  onClick={() => navigate('/auth?mode=signup')}
+                  sx={{ mr: 2 }}
+                >
+                  무료 회원가입
+                </Button>
+                <Button 
+                  variant="outlined"
+                  onClick={() => setError(null)}
+                >
+                  닫기
+                </Button>
               </Box>
             )}
           </Box>
@@ -271,28 +388,18 @@ function App() {
     );
   }
 
-  // 로그인하지 않은 경우 인증 폼 표시
-  if (!user || !token) {
-    return (
-      <Router>
-        <Routes>
-          <Route path="/password-reset/:token" element={<PasswordReset />} />
-          <Route path="*" element={<AuthForm onLogin={handleLogin} />} />
-        </Routes>
-      </Router>
-    );
-  }
-
-  // 로그인한 경우 메인 앱 표시
+  // 메인 앱 (게스트 사용자도 접근 가능)
   return (
     <Router>
       <Header user={user} onLogout={handleLogout} />
       <Container maxWidth="lg">
         <Routes>
+          <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
+          <Route path="/password-reset/:token" element={<PasswordReset />} />
           <Route path="/" element={
             <>
               <NavigationTabs />
-              <MainContent token={token} />
+              <MainContent token={token} user={user} />
             </>
           } />
           <Route path="/certificate-analysis" element={

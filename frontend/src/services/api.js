@@ -2,13 +2,18 @@
 
 import axios from 'axios';
 
+// axios 기본 설정
+axios.defaults.withCredentials = true;
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
 // 환경변수 디버깅을 위한 로그 추가
 console.log('All env variables:', process.env);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 
 // API 기본 URL 설정
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://findpest.kr/api";
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
+  (process.env.NODE_ENV === 'development' ? "http://localhost:8000/api" : "https://findpest.kr/api");
 
 
 console.log('API Configuration:', {
@@ -26,6 +31,7 @@ export const getPesticideAutocomplete = async (query) => {
     console.log('Autocomplete query:', query);
     const response = await axios.get(`${API_BASE_URL}/pesticides/autocomplete/`, {
       params: { query },
+      withCredentials: true,  // 세션 쿠키 포함
     });
     console.log('Autocomplete response:', response.data);
     return response.data;
@@ -41,6 +47,7 @@ export const getFoodAutocomplete = async (query) => {
     console.log('Food autocomplete query:', query);
     const response = await axios.get(`${API_BASE_URL}/pesticides/food_autocomplete/`, {
       params: { query },
+      withCredentials: true,  // 세션 쿠키 포함
     });
     console.log('Food autocomplete response:', response.data);
     return response.data;
@@ -128,10 +135,24 @@ export const api = {
       console.log('Search parameters:', { pesticide, food });
       const response = await axios.get(`${API_BASE_URL}/pesticides/`, {
         params: { pesticide, food },
+        withCredentials: true,  // 세션 쿠키 포함
       });
       return response.data;
     } catch (error) {
       console.error('Search pesticides error:', error);
+      throw error;
+    }
+  },
+
+  // 게스트 쿼리 상태 확인
+  getGuestQueryStatus: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/pesticides/guest_query_status/`, {
+        withCredentials: true,  // 세션 쿠키 포함
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching guest query status:', error);
       throw error;
     }
   },
@@ -153,9 +174,13 @@ export const api = {
   // PubChem API 함수
   getChemicalStructure: async (compoundName) => {
     try {
-      const response = await axios.get(`${PUBCHEM_BASE_URL}/compound/name/${encodeURIComponent(compoundName)}/property/IUPACName,CanonicalSMILES/JSON`);
-      const cid = response.data.PropertyTable.Properties[0].CID;
-      return `${PUBCHEM_BASE_URL}/compound/cid/${cid}/PNG`;
+      console.log('Attempting to fetch chemical structure for:', compoundName);
+      
+      // CORS 문제로 인해 직접 이미지 URL 생성 (CID 조회 없이)
+      const encodedName = encodeURIComponent(compoundName);
+      const imageUrl = `${PUBCHEM_BASE_URL}/compound/name/${encodedName}/PNG`;
+      
+      return imageUrl;
     } catch (error) {
       console.error('Chemical structure fetch error:', error);
       return null;
@@ -163,15 +188,8 @@ export const api = {
   },
 
   get3DStructure: async (compoundName) => {
-    try {
-      const response = await axios.get(`${PUBCHEM_BASE_URL}/compound/name/${encodeURIComponent(compoundName)}/property/IUPACName,CanonicalSMILES/JSON`);
-      const cid = response.data.PropertyTable.Properties[0].CID;
-      const sdfResponse = await axios.get(`${PUBCHEM_BASE_URL}/compound/cid/${cid}/record/SDF/?record_type=3d&response_type=display`);
-      return sdfResponse.data;
-    } catch (error) {
-      console.error('3D structure fetch error:', error);
-      return null;
-    }
+    // 3D 구조는 CORS 정책으로 인해 비활성화됨
+    return null;
   },
 
   // 검색 결과 로깅

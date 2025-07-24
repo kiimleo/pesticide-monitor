@@ -75,7 +75,7 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
   }, [wrapperRef]);
 
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className="relative" ref={wrapperRef} style={{ position: 'relative' }}>
       <TextField
         fullWidth
         label="식품명"
@@ -91,20 +91,32 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
           elevation={3} 
           sx={{ 
             position: 'absolute', 
-            width: '100%', 
-            zIndex: 10, 
+            width: 'fit-content',
+            minWidth: '200px',
+            maxWidth: '400px',
+            left: 0,
+            top: '100%',
+            zIndex: 1000, 
             maxHeight: '240px', 
             overflow: 'auto',
-            mt: 0.5 
+            mt: 0.5,
+            border: '1px solid #e0e0e0'
           }}
         >
-          <List>
+          <List sx={{ py: 0 }}>
             {suggestions.map((item, index) => (
               <ListItem 
                 key={index}
                 button
                 onClick={() => onSuggestionClick(item)}
-                sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
+                sx={{ 
+                  cursor: 'pointer', 
+                  py: 1,
+                  px: 2,
+                  minHeight: 'auto',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
+                }}
               >
                 {item}
               </ListItem>

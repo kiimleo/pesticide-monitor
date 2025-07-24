@@ -1,6 +1,7 @@
 // frontend/src/components/AuthForm.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -19,6 +20,8 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const AuthForm = ({ onLogin }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mode, setMode] = useState('login'); // 'login', 'signup', 'forgot'
   const [formData, setFormData] = useState({
     email: '',
@@ -33,6 +36,16 @@ const AuthForm = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
+  // URL 쿼리 파라미터에 따라 모드 설정
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const modeParam = searchParams.get('mode');
+    if (modeParam === 'login') {
+      setMode('login');
+    } else if (modeParam === 'signup') {
+      setMode('signup');
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
@@ -135,6 +148,8 @@ const AuthForm = ({ onLogin }) => {
           localStorage.setItem('user', JSON.stringify(result.user));
           setSuccess(result.message);
           onLogin(result.user, result.token);
+          // 로그인 성공 후 홈 페이지로 리다이렉트
+          setTimeout(() => navigate('/'), 1000); // 성공 메시지를 1초간 보여준 후 리다이렉트
         } else if (mode === 'forgot') {
           setSuccess(result.message);
           setTimeout(() => setMode('login'), 3000);

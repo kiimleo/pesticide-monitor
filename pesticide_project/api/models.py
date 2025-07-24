@@ -130,6 +130,36 @@ class PasswordResetToken(models.Model):
         return f"{self.user.email} - {self.token}"
 
 
+class GuestSession(models.Model):
+    """게스트 사용자의 검색 쿼리 제한을 위한 세션 모델"""
+    session_key = models.CharField(max_length=40, unique=True)  # Django 세션 키
+    ip_address = models.GenericIPAddressField()
+    query_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'guest_sessions'
+        verbose_name = '게스트 세션'
+        verbose_name_plural = '게스트 세션'
+        indexes = [
+            models.Index(fields=['session_key']),
+            models.Index(fields=['ip_address', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ip_address} - {self.query_count}/5 queries"
+    
+    def can_query(self):
+        """5회 제한 체크"""
+        return self.query_count < 5
+    
+    def increment_query(self):
+        """쿼리 카운트 증가"""
+        self.query_count += 1
+        self.save()
+
+
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     organization = models.CharField(max_length=100)  # 소속기관명 또는 이름 (필수)

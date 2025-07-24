@@ -91,8 +91,8 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
       if (selectedPesticide) {
         const url = await api.getChemicalStructure(selectedPesticide.pesticide_name_en);
         setStructureUrl(url);
-        const structure3D = await api.get3DStructure(selectedPesticide.pesticide_name_en);
-        setStructure3D(structure3D);
+        // 3D 구조는 CORS 정책으로 인해 비활성화됨
+        setStructure3D(null);
       }
     };
     fetchStructures();
@@ -330,14 +330,37 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                       </TransformComponent>
                     </TransformWrapper>
                   ) : viewMode === '3d' ? (
-                    <div
-                      ref={containerRef}
-                      style={{
-                        width: '100%',
-                        height: '300px',
-                        position: 'relative'
-                      }}
-                    />
+                    structure3D ? (
+                      <div
+                        ref={containerRef}
+                        style={{
+                          width: '100%',
+                          height: '300px',
+                          position: 'relative'
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: '100%',
+                          height: '300px',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          border: '1px dashed #ccc',
+                          borderRadius: 1,
+                          bgcolor: 'grey.50'
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary" textAlign="center">
+                          3D 구조 데이터를 불러올 수 없습니다
+                          <br />
+                          <Typography variant="caption" color="text.disabled">
+                            일부 화합물은 3D 구조 정보가 제공되지 않을 수 있습니다
+                          </Typography>
+                        </Typography>
+                      </Box>
+                    )
                   ) : null}
                 </Box>
               )}
@@ -611,14 +634,35 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
               </TransformComponent>
             </TransformWrapper>
           ) : viewMode === '3d' ? (
-            <div
-              ref={fullscreenContainerRef}
-              style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative'
-              }}
-            />
+            structure3D ? (
+              <div
+                ref={fullscreenContainerRef}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'relative'
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  bgcolor: 'grey.50'
+                }}
+              >
+                <Typography variant="h6" color="text.secondary" textAlign="center">
+                  3D 구조 데이터를 불러올 수 없습니다
+                  <br />
+                  <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+                    일부 화합물은 3D 구조 정보가 제공되지 않을 수 있습니다
+                  </Typography>
+                </Typography>
+              </Box>
+            )
           ) : null}
         </Box>
       </Dialog>
