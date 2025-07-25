@@ -34,7 +34,7 @@ const Header = ({ user, onLogout }) => {
             }
           }}
         >
-          FindPest - Ai 기반 농약 검색 서비스
+          FindPest - Ai search
         </Typography>
         {user ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -90,12 +90,12 @@ const NavigationTabs = () => {
         centered
       >
         <Tab 
-          label="농약 잔류허용기준 검색" 
+          label="잔류농약 허용기준 검색" 
           component={Link} 
           to="/" 
         />
         <Tab 
-          label="검정증명서 분석" 
+          label="검정 증명서 검증" 
           component={Link} 
           to="/certificate-analysis" 
         />
