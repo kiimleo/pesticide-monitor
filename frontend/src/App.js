@@ -13,6 +13,11 @@ import CertificateAnalysisPage from './components/CertificateAnalysisPage';
 import AuthForm from './components/AuthForm';
 import PasswordReset from './components/PasswordReset';
 
+// New design components (점진적 테스트용)
+import LandingPage from './components/LandingPage';
+import NewHeader from './components/NewHeader';
+import SearchPage from './components/SearchPage';
+
 // 헤더 컴포넌트
 const Header = ({ user, onLogout }) => {
   const navigate = useNavigate();
@@ -391,28 +396,55 @@ function App() {
   // 메인 앱 (게스트 사용자도 접근 가능)
   return (
     <Router>
-      <Header user={user} onLogout={handleLogout} />
-      <Container maxWidth="lg">
-        <Routes>
-          <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
-          <Route path="/password-reset/:token" element={<PasswordReset />} />
-          <Route path="/" element={
-            <>
-              <NavigationTabs />
-              <MainContent token={token} user={user} />
-            </>
-          } />
-          <Route path="/certificate-analysis" element={
-            <>
-              <NavigationTabs />
-              <CertificateAnalysisPage />
-            </>
-          } />
-          <Route path="/statistics" element={<SearchStatistics />} />
-          <Route path="/pesticide-image" element={<PesticideImage />} />
-          <Route path="/admin/*" element={<AdminRedirect />} />
-        </Routes>
-      </Container>
+      <Routes>
+        {/* 새 디자인 테스트 라우트 (Container 밖에서) */}
+        <Route path="/new-design" element={
+          <>
+            <NewHeader user={user} onLogout={handleLogout} showNavigation={true} />
+            <LandingPage />
+          </>
+        } />
+        <Route path="/search" element={
+          <>
+            <NewHeader user={user} onLogout={handleLogout} showNavigation={true} />
+            <SearchPage token={token} user={user} />
+          </>
+        } />
+        <Route path="/certificate-analysis" element={
+          <>
+            <NewHeader user={user} onLogout={handleLogout} showNavigation={true} />
+            <CertificateAnalysisPage />
+          </>
+        } />
+        
+        {/* 기존 라우트들 (Container 안에서) */}
+        <Route path="/*" element={
+          <>
+            <Header user={user} onLogout={handleLogout} />
+            <Container maxWidth="lg">
+              <Routes>
+                <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
+                <Route path="/password-reset/:token" element={<PasswordReset />} />
+                <Route path="/" element={
+                  <>
+                    <NavigationTabs />
+                    <MainContent token={token} user={user} />
+                  </>
+                } />
+                <Route path="/certificate-analysis" element={
+                  <>
+                    <NavigationTabs />
+                    <CertificateAnalysisPage />
+                  </>
+                } />
+                <Route path="/statistics" element={<SearchStatistics />} />
+                <Route path="/pesticide-image" element={<PesticideImage />} />
+                <Route path="/admin/*" element={<AdminRedirect />} />
+              </Routes>
+            </Container>
+          </>
+        } />
+      </Routes>
     </Router>
   );
 }

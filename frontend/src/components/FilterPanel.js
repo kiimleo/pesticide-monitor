@@ -1,6 +1,6 @@
 // path of this code : frontend/src/components/FilterPanel.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -12,9 +12,16 @@ import { Clear as ClearIcon } from '@mui/icons-material';
 import PesticideAutocomplete from './PesticideAutocomplete';
 import FoodAutocomplete from './FoodAutocomplete';
 
-const FilterPanel = ({ onFilter, onReset }) => {
+const FilterPanel = ({ onFilter, onReset, prefilledFood = '' }) => {
   const [food, setFood] = useState('');
   const [pesticide, setPesticide] = useState('');
+
+  // 미리 입력된 식품명이 있으면 설정
+  useEffect(() => {
+    if (prefilledFood) {
+      setFood(prefilledFood);
+    }
+  }, [prefilledFood]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -55,7 +62,13 @@ const FilterPanel = ({ onFilter, onReset }) => {
                 variant="contained"
                 type="submit"
                 disabled={!food || !pesticide}
-                sx={{ height: '56px' }}
+                sx={{ 
+                  height: '56px',
+                  backgroundColor: '#4A7C59',
+                  '&:hover': {
+                    backgroundColor: '#3d6b4a'
+                  }
+                }}
               >
                 검색
               </Button>

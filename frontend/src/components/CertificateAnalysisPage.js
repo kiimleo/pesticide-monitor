@@ -23,10 +23,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Container
 } from '@mui/material';
 import { CloudUpload, CheckCircleOutline, ErrorOutline, Info } from '@mui/icons-material';
 import { api } from '../services/api';
+import { designTokens } from '../theme/designTokens';
 
 // 파일 업로드 컴포넌트
 const FileUploadSection = ({ file, onFileChange, onUpload, onFileDelete, loading, fileInputRef }) => {
@@ -55,11 +57,13 @@ const FileUploadSection = ({ file, onFileChange, onUpload, onFileDelete, loading
   return (
     <Paper 
       sx={{ 
-        p: 3, 
-        mb: 3, 
-        border: '2px dashed #ccc',
-        borderRadius: 2,
-        textAlign: 'center'
+        p: designTokens.spacing[8], 
+        mb: designTokens.spacing[6], 
+        border: '2px dashed #ddd',
+        borderRadius: designTokens.borderRadius.xl,
+        textAlign: 'center',
+        backgroundColor: designTokens.colors.white,
+        boxShadow: designTokens.shadows.sm
       }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -72,19 +76,40 @@ const FileUploadSection = ({ file, onFileChange, onUpload, onFileDelete, loading
         onChange={handleFileSelect}
       />
       
-      <Typography variant="h6" gutterBottom>
+      <Typography 
+        variant="h5" 
+        gutterBottom
+        sx={{ 
+          fontWeight: 'bold',
+          color: designTokens.colors.text.primary,
+          mb: designTokens.spacing[2]
+        }}
+      >
         검정증명서 PDF 업로드
       </Typography>
       
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography 
+        variant="body1" 
+        color="text.secondary" 
+        paragraph
+        sx={{ 
+          fontSize: designTokens.typography.fontSize.base,
+          mb: designTokens.spacing[4]
+        }}
+      >
         PDF 파일을 여기에 드래그 앤 드롭하거나 클릭하여 선택하세요.
       </Typography>
       
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mt: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: designTokens.spacing[3], mt: designTokens.spacing[4] }}>
         <Button 
           variant="outlined" 
           startIcon={<CloudUpload />}
           onClick={() => fileInputRef.current.click()}
+          sx={{
+            borderRadius: designTokens.borderRadius.md,
+            px: designTokens.spacing[4],
+            py: designTokens.spacing[2]
+          }}
         >
           파일 선택
         </Button>
@@ -93,14 +118,23 @@ const FileUploadSection = ({ file, onFileChange, onUpload, onFileDelete, loading
           variant="contained" 
           disabled={!file || loading}
           onClick={onUpload}
+          sx={{
+            backgroundColor: designTokens.colors.primary[500],
+            borderRadius: designTokens.borderRadius.md,
+            px: designTokens.spacing[4],
+            py: designTokens.spacing[2],
+            '&:hover': {
+              backgroundColor: designTokens.colors.primary[600]
+            }
+          }}
         >
           {loading ? <CircularProgress size={24} /> : '분석하기'}
         </Button>
       </Box>
       
       {file && (
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-          <Typography variant="body2">
+        <Box sx={{ mt: designTokens.spacing[4], display: 'flex', alignItems: 'center', justifyContent: 'center', gap: designTokens.spacing[2] }}>
+          <Typography variant="body2" sx={{ color: designTokens.colors.text.secondary }}>
             선택된 파일: {file.name}
           </Typography>
           <Button 
@@ -108,6 +142,7 @@ const FileUploadSection = ({ file, onFileChange, onUpload, onFileDelete, loading
             color="error" 
             size="small"
             onClick={onFileDelete}
+            sx={{ borderRadius: designTokens.borderRadius.sm }}
           >
             파일삭제
           </Button>
@@ -367,7 +402,7 @@ const CertificateBasicInfo = ({ data }) => {
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 검정 품목
               </Typography>
-              <Typography variant="body1" fontWeight="medium" color="primary.main">
+              <Typography variant="body1" fontWeight="medium" sx={{ color: '#4A7C59' }}>
                 {data.sample_description || '-'}
               </Typography>
             </Paper>
@@ -854,16 +889,34 @@ const CertificateAnalysisPage = () => {
 
 
   return (
-    <Box sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom align="center">
-        검정증명서 분석 및 검증
-      </Typography>
-      
-      <Box sx={{ mb: 3, textAlign: 'right' }}>
-        <Typography variant="caption" color="text.secondary">
-          검정증명서를 업로드하여 농약 잔류허용기준 검증 및 검토의견 확인
-        </Typography>
-      </Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      backgroundColor: designTokens.colors.background.default
+    }}>
+      <Container maxWidth="lg" sx={{ py: designTokens.spacing[8] }}>
+        {/* 페이지 헤더 */}
+        <Box sx={{ textAlign: 'center', mb: designTokens.spacing[8] }}>
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            sx={{ 
+              fontWeight: 'bold',
+              color: designTokens.colors.text.primary,
+              mb: designTokens.spacing[3]
+            }}
+          >
+            검정증명서 분석 및 검증
+          </Typography>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: designTokens.colors.text.secondary,
+              fontSize: designTokens.typography.fontSize.sm
+            }}
+          >
+            검정증명서를 업로드하여 농약 잔류허용기준 검증 및 검토의견 확인
+          </Typography>
+        </Box>
 
       {/* 파일 업로드 섹션 */}
       <FileUploadSection 
@@ -918,6 +971,7 @@ const CertificateAnalysisPage = () => {
           <VerificationSummary results={verificationResults} />
         </>
       )}
+      </Container>
     </Box>
   );
 };

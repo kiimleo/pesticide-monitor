@@ -73,6 +73,7 @@ const PesticideAutocomplete = ({ value, onChange, onReset }) => {
           {...params}
           label="농약성분명 (한글/영문)"
           placeholder="예: 가스가마이신 또는 Kasugamycin"
+          helperText="검색할 농약성분명을 입력하세요"
           InputProps={{
             ...params.InputProps,
             endAdornment: (

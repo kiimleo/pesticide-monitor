@@ -269,7 +269,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
               <Typography variant="h6" gutterBottom>
                 검색된 식품
               </Typography>
-              <Typography variant="h5" color="primary">
+              <Typography variant="h5" sx={{ color: '#4A7C59' }}>
                 {searchedFood}
               </Typography>
               
@@ -464,12 +464,12 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                                         variant="h6" 
                                         sx={{ 
                                           pb: 2, 
-                                          color: '#1976d2',
+                                          color: '#4A7C59',
                                           fontWeight: 500,
                                           borderBottom: '2px solid #e0e0e0',
                                           display: 'inline-block',
                                           paddingX: 2,
-                                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                          backgroundColor: 'rgba(74, 124, 89, 0.08)',
                                           borderRadius: '4px'
                                         }}
                                       >
@@ -486,7 +486,7 @@ const PesticideTable = ({ pesticides: initialPesticides, searchedFood }) => {
                                                     onClick={() => window.open(`/pesticide-image?name=${encodeURIComponent(product.brand_name)}&type=${encodeURIComponent(product.purpose)}`, '_blank')}
                                                     sx={{ 
                                                       cursor: 'pointer',
-                                                      color: 'primary.main',
+                                                      color: '#4A7C59',
                                                       '&:hover': {
                                                         textDecoration: 'underline'
                                                       }
