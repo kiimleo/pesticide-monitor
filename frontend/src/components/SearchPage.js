@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper, Alert, Chip, Button } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Paper, Button } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FilterPanel from './FilterPanel';
 import PesticideTable from './PesticideTable';
@@ -13,7 +13,6 @@ const SearchPage = ({ token, user }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchedFood, setSearchedFood] = useState('');
-  const [guestQueryStatus, setGuestQueryStatus] = useState(null);
   const [prefilledFood, setPrefilledFood] = useState('');
 
   // URL 파라미터에서 식품명 추출
@@ -25,20 +24,6 @@ const SearchPage = ({ token, user }) => {
     }
   }, [location]);
 
-  // 게스트 쿼리 상태 확인
-  useEffect(() => {
-    if (!user) {  // 게스트 사용자인 경우에만
-      const fetchGuestQueryStatus = async () => {
-        try {
-          const status = await api.getGuestQueryStatus();
-          setGuestQueryStatus(status);
-        } catch (error) {
-          console.error('게스트 쿼리 상태 확인 오류:', error);
-        }
-      };
-      fetchGuestQueryStatus();
-    }
-  }, [user, pesticides]); // 검색 후에도 상태 업데이트
 
   const resetResults = () => {
     setPesticides([]);
@@ -68,19 +53,6 @@ const SearchPage = ({ token, user }) => {
             severity: "error",
             title: "인증 오류",
             message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
-          });
-        } else if (error.response?.status === 429) {
-          // 쿼리 제한 초과 에러 처리
-          setError({
-            type: "query_limit_exceeded",
-            severity: "warning",
-            title: "검색 횟수 제한",
-            message: error.response.data.message,
-            details: {
-              query_count: error.response.data.query_count,
-              max_queries: error.response.data.max_queries,
-              require_signup: error.response.data.require_signup
-            }
           });
         } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
@@ -150,44 +122,6 @@ const SearchPage = ({ token, user }) => {
           </Typography>
         </Box>
         
-        {/* 게스트 사용자 쿼리 상태 표시 */}
-        {!user && guestQueryStatus && (
-          <Alert 
-            severity={guestQueryStatus.remaining_queries <= 1 ? "warning" : "info"}
-            sx={{ 
-              mb: designTokens.spacing[6],
-              borderRadius: designTokens.borderRadius.lg,
-              border: `1px solid ${guestQueryStatus.remaining_queries <= 1 ? designTokens.colors.status.warning : designTokens.colors.status.info}`
-            }}
-            action={
-              guestQueryStatus.remaining_queries === 0 ? (
-                <Button 
-                  color="inherit" 
-                  size="small" 
-                  variant="outlined"
-                  onClick={() => navigate('/auth?mode=signup')}
-                  sx={{ borderRadius: designTokens.borderRadius.md }}
-                >
-                  회원가입
-                </Button>
-              ) : null
-            }
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: designTokens.spacing[2] }}>
-              <Typography variant="body2">
-                {guestQueryStatus.remaining_queries > 0 
-                  ? `${guestQueryStatus.remaining_queries}회 검색 후 회원가입 필요` 
-                  : "검색 기능을 더 사용하려면 회원 가입 후 이용해 주세요."}
-              </Typography>
-              <Chip 
-                label={`${guestQueryStatus.query_count}/${guestQueryStatus.max_queries}`}
-                size="small"
-                color={guestQueryStatus.remaining_queries <= 1 ? "warning" : "primary"}
-                variant="outlined"
-              />
-            </Box>
-          </Alert>
-        )}
         
         {/* 검색 폼 */}
         <Paper 
@@ -251,28 +185,6 @@ const SearchPage = ({ token, user }) => {
                       </Box>
                     </Typography>
                   </Box>
-                </Box>
-              )}
-              {error.type === "query_limit_exceeded" && error.details?.require_signup && (
-                <Box sx={{ mt: designTokens.spacing[4] }}>
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    onClick={() => navigate('/auth?mode=signup')}
-                    sx={{ 
-                      mr: designTokens.spacing[3],
-                      borderRadius: designTokens.borderRadius.md
-                    }}
-                  >
-                    무료 회원가입
-                  </Button>
-                  <Button 
-                    variant="outlined"
-                    onClick={() => setError(null)}
-                    sx={{ borderRadius: designTokens.borderRadius.md }}
-                  >
-                    닫기
-                  </Button>
                 </Box>
               )}
             </Box>
