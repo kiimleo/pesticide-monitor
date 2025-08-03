@@ -177,7 +177,7 @@ const SearchPage = ({ token, user }) => {
               <Typography variant="body2">
                 {guestQueryStatus.remaining_queries > 0 
                   ? `${guestQueryStatus.remaining_queries}회 검색 후 회원가입 필요` 
-                  : "검색 기능을 더 사용하려면 회원 가입 후 이용해 주세요."}
+                  : "검색 기능을 더 사용하려면 로그인 또는 회원 가입후 이용해 주세요."}
               </Typography>
               <Chip 
                 label={`${guestQueryStatus.query_count}/${guestQueryStatus.max_queries}`}
