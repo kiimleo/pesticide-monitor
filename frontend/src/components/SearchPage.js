@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper, Button } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Container, Typography, Box, CircularProgress, Paper } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import FilterPanel from './FilterPanel';
 import PesticideTable from './PesticideTable';
 import { api } from '../services/api';
 import { designTokens } from '../theme/designTokens';
 
 const SearchPage = ({ token, user }) => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
