@@ -397,8 +397,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* 새 디자인 테스트 라우트 (Container 밖에서) */}
-        <Route path="/new-design" element={
+        {/* 새 디자인 라우트들 (Container 밖에서) */}
+        <Route path="/" element={
           <>
             <NewHeader user={user} onLogout={handleLogout} showNavigation={true} />
             <LandingPage />
@@ -418,32 +418,48 @@ function App() {
         } />
         
         {/* 기존 라우트들 (Container 안에서) */}
-        <Route path="/*" element={
+        <Route path="/auth" element={
           <>
             <Header user={user} onLogout={handleLogout} />
             <Container maxWidth="lg">
-              <Routes>
-                <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
-                <Route path="/password-reset/:token" element={<PasswordReset />} />
-                <Route path="/" element={
-                  <>
-                    <NavigationTabs />
-                    <MainContent token={token} user={user} />
-                  </>
-                } />
-                <Route path="/certificate-analysis" element={
-                  <>
-                    <NavigationTabs />
-                    <CertificateAnalysisPage />
-                  </>
-                } />
-                <Route path="/statistics" element={<SearchStatistics />} />
-                <Route path="/pesticide-image" element={<PesticideImage />} />
-                <Route path="/admin/*" element={<AdminRedirect />} />
-              </Routes>
+              <AuthForm onLogin={handleLogin} />
             </Container>
           </>
         } />
+        <Route path="/password-reset/:token" element={
+          <>
+            <Header user={user} onLogout={handleLogout} />
+            <Container maxWidth="lg">
+              <PasswordReset />
+            </Container>
+          </>
+        } />
+        <Route path="/old-search" element={
+          <>
+            <Header user={user} onLogout={handleLogout} />
+            <Container maxWidth="lg">
+              <NavigationTabs />
+              <MainContent token={token} user={user} />
+            </Container>
+          </>
+        } />
+        <Route path="/statistics" element={
+          <>
+            <Header user={user} onLogout={handleLogout} />
+            <Container maxWidth="lg">
+              <SearchStatistics />
+            </Container>
+          </>
+        } />
+        <Route path="/pesticide-image" element={
+          <>
+            <Header user={user} onLogout={handleLogout} />
+            <Container maxWidth="lg">
+              <PesticideImage />
+            </Container>
+          </>
+        } />
+        <Route path="/admin/*" element={<AdminRedirect />} />
       </Routes>
     </Router>
   );

@@ -301,7 +301,7 @@ const LandingPage = () => {
               fontWeight: 'bold',
               fontSize: { xs: '1.1rem', md: '1.25rem' }
             }}>
-              미션
+              지향점
             </Typography>
             <Typography variant="body2" sx={{ 
               color: designTokens.colors.text.secondary,

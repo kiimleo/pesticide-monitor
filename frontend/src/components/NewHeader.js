@@ -65,7 +65,7 @@ const NewHeader = ({ user, onLogout, showNavigation = true }) => {
             color: designTokens.colors.primary[500],
             cursor: 'pointer'
           }}
-          onClick={() => navigate('/new-design')}
+          onClick={() => navigate('/')}
         >
           Findpest - Ai search
         </Typography>
