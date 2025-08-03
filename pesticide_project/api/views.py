@@ -55,6 +55,10 @@ class UserViewSet(viewsets.ModelViewSet):
             user = serializer.save()
             # 토큰 생성
             token, created = Token.objects.get_or_create(user=user)
+            
+            # 회원가입 성공 시 게스트 세션 쿼리 카운트 리셋
+            self._reset_guest_session_query_count(request)
+            
             return Response({
                 'message': '회원가입이 완료되었습니다.',
                 'token': token.key,
@@ -74,6 +78,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             token, created = Token.objects.get_or_create(user=user)
+            
+            # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
+            self._reset_guest_session_query_count(request)
+            
             return Response({
                 'message': '로그인이 완료되었습니다.',
                 'token': token.key,
@@ -195,6 +203,36 @@ FindPest 팀''',
         """현재 사용자 정보"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+    
+    def _reset_guest_session_query_count(self, request):
+        """게스트 세션의 쿼리 카운트를 0으로 리셋"""
+        try:
+            # 세션 키 및 IP 주소 가져오기
+            session_key = request.session.session_key
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+            
+            client_ip = request.META.get('HTTP_X_FORWARDED_FOR')
+            if client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+            else:
+                client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+            
+            # 게스트 세션이 존재하면 쿼리 카운트를 0으로 리셋
+            guest_session, created = GuestSession.objects.get_or_create(
+                session_key=session_key,
+                ip_address=client_ip,
+                defaults={'query_count': 0}
+            )
+            
+            if not created and guest_session.query_count > 0:
+                guest_session.query_count = 0
+                guest_session.save()
+                
+        except Exception as e:
+            # 리셋 실패해도 로그인/회원가입은 성공해야 함
+            print(f"Guest session reset failed: {e}")
 
 
 class LimitConditionCodeViewSet(viewsets.ReadOnlyModelViewSet):
