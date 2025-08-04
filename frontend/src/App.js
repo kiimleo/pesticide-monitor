@@ -359,9 +359,14 @@ function App() {
     setLoading(false);
   }, []);
 
-  const handleLogin = (userData, userToken) => {
+  const handleLogin = async (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
+    
+    // 로그인 후 홈페이지로 리다이렉트
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
   };
 
   const handleLogout = async () => {

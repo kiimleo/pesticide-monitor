@@ -55,6 +55,11 @@ class UserViewSet(viewsets.ModelViewSet):
             user = serializer.save()
             # 토큰 생성
             token, created = Token.objects.get_or_create(user=user)
+            
+            # 회원가입 성공 시 게스트 세션 쿼리 카운트 리셋
+            print(f"DEBUG: Calling guest session reset after signup for user: {user.email}")
+            self._reset_guest_session_query_count(request)
+            
             return Response({
                 'message': '회원가입이 완료되었습니다.',
                 'token': token.key,
@@ -74,6 +79,11 @@ class UserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             token, created = Token.objects.get_or_create(user=user)
+            
+            # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
+            print(f"DEBUG: Calling guest session reset after login for user: {user.email}")
+            self._reset_guest_session_query_count(request)
+            
             return Response({
                 'message': '로그인이 완료되었습니다.',
                 'token': token.key,
@@ -195,12 +205,65 @@ FindPest 팀''',
         """현재 사용자 정보"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+    
+    def _reset_guest_session_query_count(self, request):
+        """게스트 세션의 쿼리 카운트를 0으로 리셋"""
+        try:
+            # 세션 키 및 IP 주소 가져오기
+            session_key = request.session.session_key
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+            
+            client_ip = get_client_ip(request)
+            
+            # 디버깅: 현재 요청 정보 출력
+            print(f"DEBUG: Login reset attempt - Session Key: {session_key}, IP: {client_ip}")
+            
+            # 게스트 세션이 존재하면 쿼리 카운트를 0으로 리셋
+            # 현재 IP와 127.0.0.1 모두에서 세션 찾기 (IP 추출 방식 차이 때문)
+            guest_sessions = GuestSession.objects.filter(
+                Q(ip_address=client_ip) | Q(ip_address='127.0.0.1')
+            )
+            
+            print(f"DEBUG: Found {guest_sessions.count()} guest sessions to reset for IP: {client_ip} (including 127.0.0.1)")
+            for session in guest_sessions:
+                print(f"DEBUG: Session - Key: {session.session_key}, IP: {session.ip_address}, Count: {session.query_count}")
+            
+            if guest_sessions.exists():
+                # 해당 IP들의 모든 세션 쿼리 카운트를 0으로 리셋
+                reset_count = guest_sessions.update(query_count=0)
+                print(f"DEBUG: Successfully reset query count for {reset_count} sessions")
+            
+            # 현재 세션에 대한 새 레코드도 생성 (중복되더라도)
+            new_session, created = GuestSession.objects.get_or_create(
+                session_key=session_key,
+                ip_address=client_ip,
+                defaults={'query_count': 0}
+            )
+            if created:
+                print(f"DEBUG: Created new session - Key: {session_key}, IP: {client_ip}")
+            else:
+                print(f"DEBUG: Found existing session - Key: {session_key}, IP: {client_ip}")
+                
+        except Exception as e:
+            # 리셋 실패해도 로그인/회원가입은 성공해야 함
+            print(f"Guest session reset failed: {e}")
 
 
 class LimitConditionCodeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LimitConditionCode.objects.all()
     serializer_class = LimitConditionCodeSerializer
     pass
+
+def get_client_ip(request):
+    """클라이언트 IP 주소를 일관되게 추출하는 공통 함수"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    return ip
 
 def format_log_message(type, **kwargs):
     time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -232,11 +295,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             request.session.create()
             session_key = request.session.session_key
         
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            ip = request.META.get('REMOTE_ADDR')
+        ip = get_client_ip(request)
         
         # 게스트 세션 가져오기 또는 생성
         guest_session, created = GuestSession.objects.get_or_create(
@@ -404,11 +463,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         """검색 로그를 기록하는 내부 메서드"""
         try:
             # 클라이언트 IP 가져오기
-            x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0].strip()
-            else:
-                ip = self.request.META.get('REMOTE_ADDR')
+            ip = get_client_ip(self.request)
 
             # User Agent 정보 가져오기
             user_agent = self.request.META.get('HTTP_USER_AGENT', '')

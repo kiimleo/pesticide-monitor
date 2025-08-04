@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper } from '@mui/material';
-import { useLocation } from 'react-router-dom';
+import { Container, Typography, Box, CircularProgress, Paper, Alert, Button } from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FilterPanel from './FilterPanel';
 import PesticideTable from './PesticideTable';
 import { api } from '../services/api';
 import { designTokens } from '../theme/designTokens';
 
 const SearchPage = ({ token, user }) => {
+  const navigate = useNavigate();
   const location = useLocation();
   const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchedFood, setSearchedFood] = useState('');
+  const [guestQueryStatus, setGuestQueryStatus] = useState(null);
   const [prefilledFood, setPrefilledFood] = useState('');
 
   // URL 파라미터에서 식품명 추출
@@ -23,6 +25,20 @@ const SearchPage = ({ token, user }) => {
     }
   }, [location]);
 
+  // 게스트 쿼리 상태 확인
+  useEffect(() => {
+    if (!user) {  // 게스트 사용자인 경우에만
+      const fetchGuestQueryStatus = async () => {
+        try {
+          const status = await api.getGuestQueryStatus();
+          setGuestQueryStatus(status);
+        } catch (error) {
+          console.error('게스트 쿼리 상태 확인 오류:', error);
+        }
+      };
+      fetchGuestQueryStatus();
+    }
+  }, [user, pesticides]); // 검색 후에도 상태 업데이트
 
   const resetResults = () => {
     setPesticides([]);
@@ -45,7 +61,26 @@ const SearchPage = ({ token, user }) => {
         const data = await api.getPesticides(params, token);
         setPesticides(data);
         setError(null);
+        
+        // 게스트 사용자의 경우 성공한 검색 후에도 쿼리 상태 업데이트
+        if (!user) {
+          try {
+            const status = await api.getGuestQueryStatus();
+            setGuestQueryStatus(status);
+          } catch (statusError) {
+            console.error('게스트 쿼리 상태 확인 오류:', statusError);
+          }
+        }
       } catch (error) {
+        // 게스트 사용자의 경우 검색 후 쿼리 상태 업데이트
+        if (!user) {
+          try {
+            const status = await api.getGuestQueryStatus();
+            setGuestQueryStatus(status);
+          } catch (statusError) {
+            console.error('게스트 쿼리 상태 확인 오류:', statusError);
+          }
+        }
         if (error.response?.status === 401) {
           setError({
             type: "auth_error",
@@ -53,6 +88,9 @@ const SearchPage = ({ token, user }) => {
             title: "인증 오류",
             message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
           });
+        } else if (error.response?.status === 429) {
+          // 429 에러는 무시하고 다른 처리 없음
+          setError(null);
         } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
           
@@ -121,6 +159,32 @@ const SearchPage = ({ token, user }) => {
           </Typography>
         </Box>
         
+        {/* 게스트 사용자 쿼리 상태 표시 - 5회 초과 시에만 */}
+        {!user && guestQueryStatus && guestQueryStatus.remaining_queries === 0 && (
+          <Alert 
+            severity="warning"
+            sx={{ 
+              mb: designTokens.spacing[6],
+              borderRadius: designTokens.borderRadius.lg,
+              border: `1px solid ${designTokens.colors.status.warning}`
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                variant="outlined"
+                onClick={() => navigate('/auth?mode=signup')}
+                sx={{ borderRadius: designTokens.borderRadius.md }}
+              >
+                회원가입
+              </Button>
+            }
+          >
+            <Typography variant="body2">
+              검색 기능을 더 사용하려면 로그인 또는 회원 가입후 이용해 주세요.
+            </Typography>
+          </Alert>
+        )}
         
         {/* 검색 폼 */}
         <Paper 
