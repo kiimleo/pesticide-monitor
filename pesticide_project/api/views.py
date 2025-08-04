@@ -215,11 +215,7 @@ FindPest 팀''',
                 request.session.create()
                 session_key = request.session.session_key
             
-            client_ip = request.META.get('HTTP_X_FORWARDED_FOR')
-            if client_ip:
-                client_ip = client_ip.split(',')[0].strip()
-            else:
-                client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+            client_ip = get_client_ip(request)
             
             # 디버깅: 현재 요청 정보 출력
             print(f"DEBUG: Login reset attempt - Session Key: {session_key}, IP: {client_ip}")
@@ -257,6 +253,15 @@ class LimitConditionCodeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LimitConditionCodeSerializer
     pass
 
+def get_client_ip(request):
+    """클라이언트 IP 주소를 일관되게 추출하는 공통 함수"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    return ip
+
 def format_log_message(type, **kwargs):
     time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
     if type == 'search':
@@ -287,11 +292,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             request.session.create()
             session_key = request.session.session_key
         
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            ip = request.META.get('REMOTE_ADDR')
+        ip = get_client_ip(request)
         
         # 게스트 세션 가져오기 또는 생성
         guest_session, created = GuestSession.objects.get_or_create(
@@ -459,11 +460,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         """검색 로그를 기록하는 내부 메서드"""
         try:
             # 클라이언트 IP 가져오기
-            x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0].strip()
-            else:
-                ip = self.request.META.get('REMOTE_ADDR')
+            ip = get_client_ip(self.request)
 
             # User Agent 정보 가져오기
             user_agent = self.request.META.get('HTTP_USER_AGENT', '')
