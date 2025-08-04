@@ -61,7 +61,26 @@ const SearchPage = ({ token, user }) => {
         const data = await api.getPesticides(params, token);
         setPesticides(data);
         setError(null);
+        
+        // 게스트 사용자의 경우 성공한 검색 후에도 쿼리 상태 업데이트
+        if (!user) {
+          try {
+            const status = await api.getGuestQueryStatus();
+            setGuestQueryStatus(status);
+          } catch (statusError) {
+            console.error('게스트 쿼리 상태 확인 오류:', statusError);
+          }
+        }
       } catch (error) {
+        // 게스트 사용자의 경우 검색 후 쿼리 상태 업데이트
+        if (!user) {
+          try {
+            const status = await api.getGuestQueryStatus();
+            setGuestQueryStatus(status);
+          } catch (statusError) {
+            console.error('게스트 쿼리 상태 확인 오류:', statusError);
+          }
+        }
         if (error.response?.status === 401) {
           setError({
             type: "auth_error",
@@ -70,18 +89,8 @@ const SearchPage = ({ token, user }) => {
             message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
           });
         } else if (error.response?.status === 429) {
-          // 쿼리 제한 초과 에러 처리
-          setError({
-            type: "query_limit_exceeded",
-            severity: "warning",
-            title: "검색 횟수 제한",
-            message: error.response.data.message,
-            details: {
-              query_count: error.response.data.query_count,
-              max_queries: error.response.data.max_queries,
-              require_signup: error.response.data.require_signup
-            }
-          });
+          // 429 에러는 무시하고 다른 처리 없음
+          setError(null);
         } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
           
@@ -150,42 +159,30 @@ const SearchPage = ({ token, user }) => {
           </Typography>
         </Box>
         
-        {/* 게스트 사용자 쿼리 상태 표시 */}
-        {!user && guestQueryStatus && (
+        {/* 게스트 사용자 쿼리 상태 표시 - 5회 초과 시에만 */}
+        {!user && guestQueryStatus && guestQueryStatus.remaining_queries === 0 && (
           <Alert 
-            severity={guestQueryStatus.remaining_queries <= 1 ? "warning" : "info"}
+            severity="warning"
             sx={{ 
               mb: designTokens.spacing[6],
               borderRadius: designTokens.borderRadius.lg,
-              border: `1px solid ${guestQueryStatus.remaining_queries <= 1 ? designTokens.colors.status.warning : designTokens.colors.status.info}`
+              border: `1px solid ${designTokens.colors.status.warning}`
             }}
             action={
-              guestQueryStatus.remaining_queries === 0 ? (
-                <Button 
-                  color="inherit" 
-                  size="small" 
-                  variant="outlined"
-                  onClick={() => navigate('/auth?mode=signup')}
-                  sx={{ borderRadius: designTokens.borderRadius.md }}
-                >
-                  회원가입
-                </Button>
-              ) : null
+              <Button 
+                color="inherit" 
+                size="small" 
+                variant="outlined"
+                onClick={() => navigate('/auth?mode=signup')}
+                sx={{ borderRadius: designTokens.borderRadius.md }}
+              >
+                회원가입
+              </Button>
             }
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: designTokens.spacing[2] }}>
-              <Typography variant="body2">
-                {guestQueryStatus.remaining_queries > 0 
-                  ? `${guestQueryStatus.remaining_queries}회 검색 후 회원가입 필요` 
-                  : "검색 기능을 더 사용하려면 로그인 또는 회원 가입후 이용해 주세요."}
-              </Typography>
-              <Chip 
-                label={`${guestQueryStatus.query_count}/${guestQueryStatus.max_queries}`}
-                size="small"
-                color={guestQueryStatus.remaining_queries <= 1 ? "warning" : "primary"}
-                variant="outlined"
-              />
-            </Box>
+            <Typography variant="body2">
+              검색 기능을 더 사용하려면 로그인 또는 회원 가입후 이용해 주세요.
+            </Typography>
           </Alert>
         )}
         
@@ -251,28 +248,6 @@ const SearchPage = ({ token, user }) => {
                       </Box>
                     </Typography>
                   </Box>
-                </Box>
-              )}
-              {error.type === "query_limit_exceeded" && error.details?.require_signup && (
-                <Box sx={{ mt: designTokens.spacing[4] }}>
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    onClick={() => navigate('/auth?mode=signup')}
-                    sx={{ 
-                      mr: designTokens.spacing[3],
-                      borderRadius: designTokens.borderRadius.md
-                    }}
-                  >
-                    무료 회원가입
-                  </Button>
-                  <Button 
-                    variant="outlined"
-                    onClick={() => setError(null)}
-                    sx={{ borderRadius: designTokens.borderRadius.md }}
-                  >
-                    닫기
-                  </Button>
                 </Box>
               )}
             </Box>

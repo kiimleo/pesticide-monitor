@@ -359,9 +359,15 @@ function App() {
     setLoading(false);
   }, []);
 
-  const handleLogin = (userData, userToken) => {
+  const handleLogin = async (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
+    
+    // 로그인 후 페이지를 새로고침하여 모든 상태 초기화
+    // (게스트 세션 상태도 함께 리셋됨)
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handleLogout = async () => {
