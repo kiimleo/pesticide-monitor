@@ -89,8 +89,9 @@ const SearchPage = ({ token, user }) => {
             message: "로그인이 필요합니다. 페이지를 새로고침해주세요."
           });
         } else if (error.response?.status === 429) {
-          // 429 에러는 무시하고 다른 처리 없음
+          // 429 에러는 무시하고 다른 처리 없음 - 함수 종료
           setError(null);
+          return;
         } else if (error.response?.status === 404) {
           const errorType = error.response.data.error_type;
           
