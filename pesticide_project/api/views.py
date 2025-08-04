@@ -57,6 +57,7 @@ class UserViewSet(viewsets.ModelViewSet):
             token, created = Token.objects.get_or_create(user=user)
             
             # 회원가입 성공 시 게스트 세션 쿼리 카운트 리셋
+            print(f"DEBUG: Calling guest session reset after signup for user: {user.email}")
             self._reset_guest_session_query_count(request)
             
             return Response({
@@ -80,6 +81,7 @@ class UserViewSet(viewsets.ModelViewSet):
             token, created = Token.objects.get_or_create(user=user)
             
             # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
+            print(f"DEBUG: Calling guest session reset after login for user: {user.email}")
             self._reset_guest_session_query_count(request)
             
             return Response({
@@ -219,23 +221,31 @@ FindPest 팀''',
             else:
                 client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
             
+            # 디버깅: 현재 요청 정보 출력
+            print(f"DEBUG: Login reset attempt - Session Key: {session_key}, IP: {client_ip}")
+            
             # 게스트 세션이 존재하면 쿼리 카운트를 0으로 리셋
             # session_key 또는 ip_address로 기존 세션 찾기
             guest_sessions = GuestSession.objects.filter(
                 Q(session_key=session_key) | Q(ip_address=client_ip)
             )
             
+            print(f"DEBUG: Found {guest_sessions.count()} guest sessions to reset")
+            for session in guest_sessions:
+                print(f"DEBUG: Session - Key: {session.session_key}, IP: {session.ip_address}, Count: {session.query_count}")
+            
             if guest_sessions.exists():
                 # 기존 세션들의 쿼리 카운트를 모두 0으로 리셋
-                guest_sessions.update(query_count=0)
-                print(f"Reset query count for {guest_sessions.count()} sessions")
+                reset_count = guest_sessions.update(query_count=0)
+                print(f"DEBUG: Successfully reset query count for {reset_count} sessions")
             else:
                 # 새 세션 생성
-                GuestSession.objects.create(
+                new_session = GuestSession.objects.create(
                     session_key=session_key,
                     ip_address=client_ip,
                     query_count=0
                 )
+                print(f"DEBUG: Created new session - ID: {new_session.id}, Key: {session_key}, IP: {client_ip}")
                 
         except Exception as e:
             # 리셋 실패해도 로그인/회원가입은 성공해야 함
