@@ -363,10 +363,9 @@ function App() {
     setUser(userData);
     setToken(userToken);
     
-    // 로그인 후 페이지를 새로고침하여 모든 상태 초기화
-    // (게스트 세션 상태도 함께 리셋됨)
+    // 로그인 후 홈페이지로 리다이렉트
     setTimeout(() => {
-      window.location.reload();
+      window.location.href = '/';
     }, 1000);
   };
 
