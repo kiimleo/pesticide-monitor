@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, CircularProgress, Paper, Alert, Chip, Button } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Paper, Alert, Button } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FilterPanel from './FilterPanel';
 import PesticideTable from './PesticideTable';
