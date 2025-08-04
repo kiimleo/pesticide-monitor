@@ -220,15 +220,22 @@ FindPest 팀''',
                 client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
             
             # 게스트 세션이 존재하면 쿼리 카운트를 0으로 리셋
-            guest_session, created = GuestSession.objects.get_or_create(
-                session_key=session_key,
-                ip_address=client_ip,
-                defaults={'query_count': 0}
+            # session_key 또는 ip_address로 기존 세션 찾기
+            guest_sessions = GuestSession.objects.filter(
+                Q(session_key=session_key) | Q(ip_address=client_ip)
             )
             
-            if not created and guest_session.query_count > 0:
-                guest_session.query_count = 0
-                guest_session.save()
+            if guest_sessions.exists():
+                # 기존 세션들의 쿼리 카운트를 모두 0으로 리셋
+                guest_sessions.update(query_count=0)
+                print(f"Reset query count for {guest_sessions.count()} sessions")
+            else:
+                # 새 세션 생성
+                GuestSession.objects.create(
+                    session_key=session_key,
+                    ip_address=client_ip,
+                    query_count=0
+                )
                 
         except Exception as e:
             # 리셋 실패해도 로그인/회원가입은 성공해야 함
