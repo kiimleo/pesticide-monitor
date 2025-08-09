@@ -57,6 +57,7 @@ REACT_BUILD_DIR = os.path.join(os.path.dirname(BASE_DIR), 'frontend', 'build')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
     os.path.join(REACT_BUILD_DIR, 'static'),  # React 빌드된 정적 파일
+    REACT_BUILD_DIR,  # React 빌드 디렉토리 전체 (images 등 포함)
 ]
 
 # 템플릿 설정
