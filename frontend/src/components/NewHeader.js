@@ -108,6 +108,15 @@ const NewHeader = ({ user, onLogout, showNavigation = true }) => {
                 >
                   검정증명서 검증
                 </Button>
+                <Button 
+                  sx={{
+                    ...navButtonStyles,
+                    backgroundColor: location.pathname === '/statistics' ? 'rgba(255, 255, 255, 0.15)' : 'transparent'
+                  }}
+                  onClick={() => navigate('/statistics')}
+                >
+                  검색 통계
+                </Button>
               </Box>
             )}
           </Box>
@@ -176,11 +185,23 @@ const NewHeader = ({ user, onLogout, showNavigation = true }) => {
             sx={{
               ...navButtonStyles,
               justifyContent: 'flex-start',
+              mb: 1,
               backgroundColor: location.pathname === '/certificate-analysis' ? 'rgba(255, 255, 255, 0.15)' : 'transparent'
             }}
             onClick={() => navigate('/certificate-analysis')}
           >
             검정증명서 검증
+          </Button>
+          <Button 
+            fullWidth
+            sx={{
+              ...navButtonStyles,
+              justifyContent: 'flex-start',
+              backgroundColor: location.pathname === '/statistics' ? 'rgba(255, 255, 255, 0.15)' : 'transparent'
+            }}
+            onClick={() => navigate('/statistics')}
+          >
+            검색 통계
           </Button>
         </Box>
       )}

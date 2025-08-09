@@ -187,9 +187,19 @@ export const api = {
     }
   },
 
-  get3DStructure: async (compoundName) => {
-    // 3D 구조는 CORS 정책으로 인해 비활성화됨
-    return null;
+  get3DStructure: async (compoundName, token) => {
+    try {
+      console.log('Fetching 3D structure for:', compoundName);
+      const response = await axios.get(`${API_BASE_URL}/pesticides/structure3d/`, {
+        params: { compound_name: compoundName },
+        headers: token ? { 'Authorization': `Token ${token}` } : {},
+        withCredentials: true,
+      });
+      return response.data.structure_data;
+    } catch (error) {
+      console.error('3D structure fetch error:', error);
+      return null;
+    }
   },
 
   // 검색 결과 로깅
