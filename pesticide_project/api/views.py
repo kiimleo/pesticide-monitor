@@ -654,9 +654,30 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'error': 'Compound name is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            # 화합물명을 PubChem API에 맞게 변환
+            # 괄호와 특수문자를 제거하거나 적절히 변환
+            processed_name = compound_name
+            
+            # 일반적인 변환 규칙들
+            name_mappings = {
+                'Glufosinate(ammonium)': 'glufosinate-ammonium',
+                'Glufosinate ammonium': 'glufosinate-ammonium',
+                # 추가적인 매핑을 필요에 따라 추가
+            }
+            
+            if processed_name in name_mappings:
+                processed_name = name_mappings[processed_name]
+            else:
+                # 괄호 내용을 하이픈으로 변환
+                import re
+                processed_name = re.sub(r'\(([^)]+)\)', r'-\1', processed_name).lower()
+            
+            print(f"Original compound name: {compound_name}")
+            print(f"Processed compound name: {processed_name}")
+            
             # PubChem API를 통해 3D 구조 데이터 가져오기
             # 먼저 CID 가져오기
-            cid_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{compound_name}/cids/JSON"
+            cid_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{processed_name}/cids/JSON"
             cid_response = requests.get(cid_url, timeout=10)
             
             if cid_response.status_code != 200:
