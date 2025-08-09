@@ -58,7 +58,6 @@ class UserViewSet(viewsets.ModelViewSet):
             token, created = Token.objects.get_or_create(user=user)
             
             # 회원가입 성공 시 게스트 세션 쿼리 카운트 리셋
-            print(f"DEBUG: Calling guest session reset after signup for user: {user.email}")
             self._reset_guest_session_query_count(request)
             
             return Response({
@@ -82,7 +81,6 @@ class UserViewSet(viewsets.ModelViewSet):
             token, created = Token.objects.get_or_create(user=user)
             
             # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
-            print(f"DEBUG: Calling guest session reset after login for user: {user.email}")
             self._reset_guest_session_query_count(request)
             
             return Response({
@@ -218,34 +216,23 @@ FindPest 팀''',
             
             client_ip = get_client_ip(request)
             
-            # 디버깅: 현재 요청 정보 출력
-            print(f"DEBUG: Login reset attempt - Session Key: {session_key}, IP: {client_ip}")
-            
             # 게스트 세션이 존재하면 쿼리 카운트를 0으로 리셋
             # 현재 IP와 127.0.0.1 모두에서 세션 찾기 (IP 추출 방식 차이 때문)
             guest_sessions = GuestSession.objects.filter(
                 Q(ip_address=client_ip) | Q(ip_address='127.0.0.1')
             )
             
-            print(f"DEBUG: Found {guest_sessions.count()} guest sessions to reset for IP: {client_ip} (including 127.0.0.1)")
-            for session in guest_sessions:
-                print(f"DEBUG: Session - Key: {session.session_key}, IP: {session.ip_address}, Count: {session.query_count}")
-            
             if guest_sessions.exists():
                 # 해당 IP들의 모든 세션 쿼리 카운트를 0으로 리셋
                 reset_count = guest_sessions.update(query_count=0)
-                print(f"DEBUG: Successfully reset query count for {reset_count} sessions")
+                print(f"Guest session reset: {reset_count} sessions for IP {client_ip}")
             
             # 현재 세션에 대한 새 레코드도 생성 (중복되더라도)
-            new_session, created = GuestSession.objects.get_or_create(
+            GuestSession.objects.get_or_create(
                 session_key=session_key,
                 ip_address=client_ip,
                 defaults={'query_count': 0}
             )
-            if created:
-                print(f"DEBUG: Created new session - Key: {session_key}, IP: {client_ip}")
-            else:
-                print(f"DEBUG: Found existing session - Key: {session_key}, IP: {client_ip}")
                 
         except Exception as e:
             # 리셋 실패해도 로그인/회원가입은 성공해야 함
@@ -672,8 +659,8 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                 import re
                 processed_name = re.sub(r'\(([^)]+)\)', r'-\1', processed_name).lower()
             
-            print(f"Original compound name: {compound_name}")
-            print(f"Processed compound name: {processed_name}")
+            # 개발용 로그 (필요시에만)
+            # print(f"Compound name mapping: {compound_name} -> {processed_name}")
             
             # PubChem API를 통해 3D 구조 데이터 가져오기
             # 먼저 CID 가져오기
