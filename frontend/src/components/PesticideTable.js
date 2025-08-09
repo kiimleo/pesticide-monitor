@@ -260,8 +260,8 @@ const PesticideTable = ({ searchHistory, onReset, token }) => {
                             </Box>
                           </TableCell>
                           <TableCell align="center" sx={{ 
-                            color: pesticide.max_residue_limit ? 'inherit' : 'error.main',
-                            fontWeight: pesticide.max_residue_limit ? 'normal' : 'medium'
+                            color: pesticide.max_residue_limit ? '#d32f2f' : 'error.main',
+                            fontWeight: 'bold'
                           }}>
                             {pesticide.max_residue_limit 
                               ? formatResidueLimit(
