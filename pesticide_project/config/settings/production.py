@@ -23,6 +23,31 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
 
+# CORS 추가 설정
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# CSRF 설정
+CSRF_TRUSTED_ORIGINS = [
+    'https://findpest.kr',
+    'https://www.findpest.kr',
+    'http://localhost:3000',
+]
+
+# 세션 설정
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
 # 미들웨어 설정
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
