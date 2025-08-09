@@ -25,6 +25,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+import requests
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -643,6 +644,61 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             'remaining_queries': max(0, 5 - (guest_session.query_count if guest_session else 0)),
             'can_query': can_query
         })
+
+    @action(detail=False, methods=['GET'], permission_classes=[AllowAny])
+    def structure3d(self, request):
+        """농약성분의 3D 구조 데이터를 프록시로 가져오기"""
+        compound_name = request.query_params.get('compound_name', '').strip()
+        
+        if not compound_name:
+            return Response({'error': 'Compound name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # PubChem API를 통해 3D 구조 데이터 가져오기
+            # 먼저 CID 가져오기
+            cid_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{compound_name}/cids/JSON"
+            cid_response = requests.get(cid_url, timeout=10)
+            
+            if cid_response.status_code != 200:
+                return Response({'error': 'Compound not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            cid_data = cid_response.json()
+            cid = cid_data.get('IdentifierList', {}).get('CID', [None])[0]
+            
+            if not cid:
+                return Response({'error': 'CID not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            # 3D SDF 구조 데이터 가져오기
+            sdf_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/SDF?record_type=3d"
+            sdf_response = requests.get(sdf_url, timeout=10)
+            
+            if sdf_response.status_code == 200:
+                return Response({
+                    'structure_data': sdf_response.text,
+                    'cid': cid,
+                    'compound_name': compound_name
+                })
+            else:
+                # 3D 구조가 없는 경우 2D 구조 시도
+                sdf_url_2d = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/SDF"
+                sdf_response_2d = requests.get(sdf_url_2d, timeout=10)
+                
+                if sdf_response_2d.status_code == 200:
+                    return Response({
+                        'structure_data': sdf_response_2d.text,
+                        'cid': cid,
+                        'compound_name': compound_name,
+                        'is_2d': True
+                    })
+                    
+            return Response({'error': 'Structure data not available'}, status=status.HTTP_404_NOT_FOUND)
+            
+        except requests.RequestException as e:
+            print(f"Error fetching 3D structure: {str(e)}")
+            return Response({'error': 'Failed to fetch structure data'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            print(f"Unexpected error in structure3d: {str(e)}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['GET'])
     def search_logs(self, request):

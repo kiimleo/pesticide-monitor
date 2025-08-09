@@ -6,13 +6,11 @@ import PesticideTable from './PesticideTable';
 import { api } from '../services/api';
 import { designTokens } from '../theme/designTokens';
 
-const SearchPage = ({ token, user }) => {
+const SearchPage = ({ token, user, searchHistory, setSearchHistory }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [pesticides, setPesticides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchedFood, setSearchedFood] = useState('');
   const [guestQueryStatus, setGuestQueryStatus] = useState(null);
   const [prefilledFood, setPrefilledFood] = useState('');
 
@@ -38,19 +36,17 @@ const SearchPage = ({ token, user }) => {
       };
       fetchGuestQueryStatus();
     }
-  }, [user, pesticides]); // 검색 후에도 상태 업데이트
+  }, [user, searchHistory]); // 검색 후에도 상태 업데이트
 
   const resetResults = () => {
-    setPesticides([]);
+    setSearchHistory([]);
     setError(null);
-    setSearchedFood('');
   };
 
   const handleFilter = async (filters) => {
     try {
       setLoading(true);
       setError(null);
-      setSearchedFood(filters.food);
       
       const params = {
         pesticide: filters.pesticide.trim(),
@@ -59,7 +55,19 @@ const SearchPage = ({ token, user }) => {
       
       try {
         const data = await api.getPesticides(params, token);
-        setPesticides(data);
+        
+        // 새로운 검색 세션을 기존 기록에 추가
+        const newSearchSession = {
+          id: Date.now(), // 고유 ID
+          timestamp: new Date(),
+          searchParams: {
+            pesticide: params.pesticide,
+            food: params.food
+          },
+          results: data || []
+        };
+        
+        setSearchHistory(prev => [...prev, newSearchSession]);
         setError(null);
         
         // 게스트 사용자의 경우 성공한 검색 후에도 쿼리 상태 업데이트
@@ -115,7 +123,17 @@ const SearchPage = ({ token, user }) => {
               }
             });
           }
-          setPesticides([]);
+          // 404 에러의 경우에도 검색 세션을 추가 (빈 결과로)
+          const newSearchSession = {
+            id: Date.now(),
+            timestamp: new Date(),
+            searchParams: {
+              pesticide: params.pesticide,
+              food: params.food
+            },
+            results: []
+          };
+          setSearchHistory(prev => [...prev, newSearchSession]);
         }
       }
     } finally {
@@ -130,23 +148,22 @@ const SearchPage = ({ token, user }) => {
     }}>
       <Container maxWidth="lg" sx={{ py: designTokens.spacing[8] }}>
         {/* 페이지 헤더 */}
-        <Box sx={{ textAlign: 'center', mb: designTokens.spacing[8] }}>
+        <Box sx={{ textAlign: 'center', mb: designTokens.spacing[6] }}>
           <Typography 
-            variant="h3" 
+            variant="h4" 
             component="h1" 
             sx={{ 
               fontWeight: 'bold',
               color: designTokens.colors.text.primary,
-              mb: designTokens.spacing[3]
+              mb: designTokens.spacing[2]
             }}
           >
             잔류농약 허용기준 검색
           </Typography>
           <Typography 
-            variant="body1" 
+            variant="body2" 
             sx={{ 
-              color: designTokens.colors.text.secondary,
-              fontSize: designTokens.typography.fontSize.sm
+              color: designTokens.colors.text.secondary
             }}
           >
             식품의약품안전처 고시번호 제2024-71호, 2024년 11월 14일 개정사항 반영
@@ -158,7 +175,7 @@ const SearchPage = ({ token, user }) => {
           <Alert 
             severity="warning"
             sx={{ 
-              mb: designTokens.spacing[6],
+              mb: designTokens.spacing[4],
               borderRadius: designTokens.borderRadius.lg,
               border: `1px solid ${designTokens.colors.status.warning}`
             }}
@@ -184,12 +201,11 @@ const SearchPage = ({ token, user }) => {
         <Paper 
           elevation={0}
           sx={{ 
-            p: designTokens.spacing[6],
-            mb: designTokens.spacing[6],
+            p: designTokens.spacing[4],
+            mb: designTokens.spacing[4],
             backgroundColor: designTokens.colors.white,
-            borderRadius: designTokens.borderRadius['2xl'],
-            border: `1px solid ${designTokens.colors.gray[200]}`,
-            boxShadow: designTokens.shadows.sm
+            borderRadius: designTokens.borderRadius.lg,
+            border: `1px solid ${designTokens.colors.gray[200]}`
           }}
         >
           <FilterPanel 
@@ -259,8 +275,9 @@ const SearchPage = ({ token, user }) => {
           </Box>
         ) : (
           <PesticideTable 
-            pesticides={pesticides}
-            searchedFood={searchedFood}
+            searchHistory={searchHistory}
+            onReset={resetResults}
+            token={token}
           />
         )}
       </Container>
