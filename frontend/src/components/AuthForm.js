@@ -128,9 +128,28 @@ const AuthForm = ({ onLogin }) => {
         };
       }
 
+      // CSRF 토큰 가져오기
+      let csrfToken = '';
+      try {
+        const csrfResponse = await fetch(`${API_BASE_URL}/csrf/`, {
+          credentials: 'include'
+        });
+        if (csrfResponse.ok) {
+          const csrfData = await csrfResponse.json();
+          csrfToken = csrfData.csrfToken;
+        }
+      } catch (error) {
+        console.warn('CSRF token fetch failed:', error);
+      }
+
       const headers = {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
       };
+
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
 
       const response = await fetch(url, {
         method: 'POST',
