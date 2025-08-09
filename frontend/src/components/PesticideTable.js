@@ -207,7 +207,14 @@ const PesticideTable = ({ searchHistory, onReset, token }) => {
                 <TableRow>
                   <TableCell colSpan={4} sx={{ bgcolor: '#f8f8f8', border: '2px solid #e0e0e0' }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 'medium', color: '#333' }}>
-                      검색 #{searchHistory.length - sessionIndex}: {session.searchParams.pesticide} × {session.searchParams.food}
+                      검색 #{searchHistory.length - sessionIndex}: 
+                      <Box component="span" sx={{ fontWeight: 'bold', color: '#4A7C59', mx: 0.5 }}>
+                        {session.searchParams.pesticide}
+                      </Box>
+                      × 
+                      <Box component="span" sx={{ color: '#1976d2', mx: 0.5 }}>
+                        {session.searchParams.food}
+                      </Box>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {session.timestamp.toLocaleString()}
