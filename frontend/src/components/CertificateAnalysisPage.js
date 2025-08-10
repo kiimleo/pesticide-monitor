@@ -1314,6 +1314,9 @@ const CertificateAnalysisPage = ({ user }) => {
   const [similarFoods, setSimilarFoods] = useState([]);
   // 검증 확인 다이얼로그 상태 추가
   const [verificationConfirmDialogOpen, setVerificationConfirmDialogOpen] = useState(false);
+  
+  // fileInputRef 정의 - Hook은 조건문 이전에 선언되어야 함
+  const fileInputRef = useRef(null);
 
   // 컴포넌트 마운트 시 localStorage에서 분석 결과 복원
   useEffect(() => {
@@ -1446,10 +1449,6 @@ const CertificateAnalysisPage = ({ user }) => {
     parsedFood,
     similarFoodsLength: similarFoods.length
   });
-
-
-  // fileInputRef 정의 (새로 추가)
-  const fileInputRef = useRef(null);
   
   // 파일 업로드 및 분석 처리
   const handleUpload = async (overwrite = false) => {
