@@ -1,6 +1,6 @@
 // path of this code: frontend/src/components/CertificateAnalysisPage.js
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -529,17 +529,17 @@ const CertificateBasicInfo = ({ data }) => {
   
   return (
     <Card sx={{ 
-      mb: 4,
+      mb: 3,
       borderRadius: labThemeTokens.borderRadius.xl,
       boxShadow: labThemeTokens.shadows.elevated,
       border: `1px solid ${labThemeTokens.colors.gray[200]}`
     }}>
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: 2 }}>
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center',
-          mb: 3,
-          p: 2,
+          mb: 2,
+          p: 1.5,
           backgroundColor: labThemeTokens.colors.primary[50],
           borderRadius: labThemeTokens.borderRadius.lg,
           border: `1px solid ${labThemeTokens.colors.primary[200]}`
@@ -560,156 +560,130 @@ const CertificateBasicInfo = ({ data }) => {
           </Typography>
         </Box>
         
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {/* First row - 3 columns */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 검정 목적
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: data.analytical_purpose && data.analytical_purpose.includes('친환경') 
                     ? labThemeTokens.typography.fontWeight.bold 
                     : labThemeTokens.typography.fontWeight.medium,
                   color: data.analytical_purpose && data.analytical_purpose.includes('친환경') 
                     ? labThemeTokens.colors.accent[700] 
-                    : labThemeTokens.colors.text.primary
+                    : labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.analytical_purpose || '-'}
               </Typography>
-            </Paper>
-          </Grid>
+            </Box>
 
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 증명서 번호
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.text.primary
+                  color: labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.certificate_number || '-'}
               </Typography>
-            </Paper>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
+            </Box>
+
+            {/* Empty space placeholder */}
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px'
+              }}
+            >
+            </Box>
+          </Box>
+          
+          {/* Second row - 3 columns */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box 
+              sx={{ 
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
-                }}
-              >
-                검정 품목
-              </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
-                  fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.primary[700]
-                }}
-              >
-                {data.sample_description || '-'}
-              </Typography>
-            </Paper>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
-              sx={{ 
-                p: 2.5,
-                backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
-              }}
-            >
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
-                  color: labThemeTokens.colors.text.secondary,
-                  fontWeight: labThemeTokens.typography.fontWeight.semibold,
-                  textTransform: 'uppercase',
-                  fontSize: '11px',
-                  letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 신청인
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.text.primary
+                  color: labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.applicant_name || '-'}
@@ -719,129 +693,167 @@ const CertificateBasicInfo = ({ data }) => {
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   display: 'block',
-                  mt: 0.5,
-                  fontSize: '12px'
+                  mt: 0.25,
+                  fontSize: '11px',
+                  lineHeight: 1.1
                 }}
               >
                 {data.applicant_address}
               </Typography>
-            </Paper>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
+            </Box>
+
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 생산자/수거지
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.text.primary
+                  color: labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.producer_info || '-'}
               </Typography>
-            </Paper>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Paper 
-              elevation={0}
+            </Box>
+
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(33.333% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 검정 기간
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.text.primary
+                  color: labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.test_start_date} ~ {data.test_end_date}
               </Typography>
-            </Paper>
-          </Grid>
+            </Box>
+          </Box>
           
-          <Grid item xs={12}>
-            <Paper 
-              elevation={0}
+          {/* Third row - 2 columns: 검정 품목, 검정 항목 */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box 
               sx={{ 
-                p: 2.5,
+                flex: '1 1 calc(50% - 8px)',
+                minWidth: '200px',
+                p: 1,
                 backgroundColor: labThemeTokens.colors.background.paper,
-                borderRadius: labThemeTokens.borderRadius.lg,
-                border: `1px solid ${labThemeTokens.colors.gray[200]}`,
-                '&:hover': {
-                  boxShadow: labThemeTokens.shadows.sm
-                }
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
               }}
             >
               <Typography 
-                variant="subtitle2" 
+                variant="caption" 
                 sx={{ 
                   color: labThemeTokens.colors.text.secondary,
                   fontWeight: labThemeTokens.typography.fontWeight.semibold,
                   textTransform: 'uppercase',
-                  fontSize: '11px',
+                  fontSize: '10px',
                   letterSpacing: '0.5px',
-                  mb: 1
+                  display: 'block',
+                  mb: 0.25
+                }}
+              >
+                검정 품목
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: labThemeTokens.typography.fontWeight.medium,
+                  color: labThemeTokens.colors.primary[700],
+                  fontSize: '13px',
+                  lineHeight: 1.2
+                }}
+              >
+                {data.sample_description || '-'}
+              </Typography>
+            </Box>
+
+            <Box 
+              sx={{ 
+                flex: '1 1 calc(50% - 8px)',
+                minWidth: '200px',
+                p: 1,
+                backgroundColor: labThemeTokens.colors.background.paper,
+                borderRadius: labThemeTokens.borderRadius.md,
+                border: `1px solid ${labThemeTokens.colors.gray[200]}`
+              }}
+            >
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: labThemeTokens.colors.text.secondary,
+                  fontWeight: labThemeTokens.typography.fontWeight.semibold,
+                  textTransform: 'uppercase',
+                  fontSize: '10px',
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  mb: 0.25
                 }}
               >
                 검정 항목
               </Typography>
               <Typography 
-                variant="body1" 
+                variant="body2" 
                 sx={{ 
                   fontWeight: labThemeTokens.typography.fontWeight.medium,
-                  color: labThemeTokens.colors.text.primary
+                  color: labThemeTokens.colors.text.primary,
+                  fontSize: '13px',
+                  lineHeight: 1.2
                 }}
               >
                 {data.analyzed_items || '-'}
               </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
+            </Box>
+          </Box>
+        </Box>
       </CardContent>
     </Card>
   );
@@ -1288,7 +1300,7 @@ const VerificationSummary = ({ results }) => {
 
 
 // 메인 컴포넌트
-const CertificateAnalysisPage = () => {
+const CertificateAnalysisPage = ({ user }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1302,6 +1314,131 @@ const CertificateAnalysisPage = () => {
   const [similarFoods, setSimilarFoods] = useState([]);
   // 검증 확인 다이얼로그 상태 추가
   const [verificationConfirmDialogOpen, setVerificationConfirmDialogOpen] = useState(false);
+
+  // 컴포넌트 마운트 시 localStorage에서 분석 결과 복원
+  useEffect(() => {
+    if (user) { // 로그인된 사용자만
+      try {
+        const savedAnalysisState = localStorage.getItem('certificate_analysis_state');
+        if (savedAnalysisState) {
+          const state = JSON.parse(savedAnalysisState);
+          if (state.parsingResult) {
+            setParsingResult(state.parsingResult);
+          }
+          if (state.verificationResults) {
+            setVerificationResults(state.verificationResults);
+          }
+        }
+      } catch (error) {
+        console.error('분석 상태 복원 오류:', error);
+      }
+    }
+  }, [user]);
+
+  // 분석 결과가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    if (user && (parsingResult || verificationResults)) {
+      try {
+        const stateToSave = {
+          parsingResult,
+          verificationResults,
+          timestamp: new Date().getTime()
+        };
+        localStorage.setItem('certificate_analysis_state', JSON.stringify(stateToSave));
+      } catch (error) {
+        console.error('분석 상태 저장 오류:', error);
+      }
+    }
+  }, [user, parsingResult, verificationResults]);
+  
+  // 게스트 사용자 체크
+  if (!user) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 8 }}>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <BiotechIcon sx={{ 
+            fontSize: '64px', 
+            color: labThemeTokens.colors.primary[600],
+            mb: 2
+          }} />
+          <Typography variant="h4" component="h1" sx={{ 
+            mb: 3,
+            fontWeight: labThemeTokens.typography.fontWeight.bold,
+            color: labThemeTokens.colors.text.primary
+          }}>
+            검정증명서 분석 및 검증
+          </Typography>
+          <Alert 
+            severity="info" 
+            sx={{ 
+              maxWidth: '600px', 
+              mx: 'auto',
+              mb: 3,
+              backgroundColor: labThemeTokens.colors.primary[50],
+              borderColor: labThemeTokens.colors.primary[200],
+              '& .MuiAlert-icon': {
+                color: labThemeTokens.colors.primary[600]
+              }
+            }}
+          >
+            <Typography variant="body1" sx={{ 
+              color: labThemeTokens.colors.text.primary,
+              mb: 2
+            }}>
+              검정증명서 검증 기능은 로그인 후 이용할 수 있습니다.
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: labThemeTokens.colors.text.secondary
+            }}>
+              PDF 파일 업로드, 데이터 분석, 허용기준 검증 등 모든 기능을 안전하게 이용하세요.
+            </Typography>
+          </Alert>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button 
+              variant="contained" 
+              size="large"
+              onClick={() => window.location.href = '/auth?mode=login&redirect=/certificate-analysis'}
+              sx={{
+                backgroundColor: labThemeTokens.colors.primary[600],
+                color: 'white',
+                fontWeight: labThemeTokens.typography.fontWeight.semibold,
+                borderRadius: labThemeTokens.borderRadius.lg,
+                px: 4,
+                py: 1.5,
+                boxShadow: labThemeTokens.shadows.md,
+                '&:hover': {
+                  backgroundColor: labThemeTokens.colors.primary[700],
+                  boxShadow: labThemeTokens.shadows.lg
+                }
+              }}
+            >
+              로그인
+            </Button>
+            <Button 
+              variant="outlined" 
+              size="large"
+              onClick={() => window.location.href = '/auth?mode=signup&redirect=/certificate-analysis'}
+              sx={{
+                borderColor: labThemeTokens.colors.primary[300],
+                color: labThemeTokens.colors.primary[600],
+                fontWeight: labThemeTokens.typography.fontWeight.medium,
+                borderRadius: labThemeTokens.borderRadius.lg,
+                px: 4,
+                py: 1.5,
+                '&:hover': {
+                  borderColor: labThemeTokens.colors.primary[500],
+                  backgroundColor: labThemeTokens.colors.primary[50],
+                  color: labThemeTokens.colors.primary[700]
+                }
+              }}
+            >
+              회원가입
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+    );
+  }
 
   // 디버깅: 상태 변화 추적
   console.log('Current states:', {
@@ -1490,6 +1627,27 @@ const CertificateAnalysisPage = () => {
     }
   };
   
+  // 분석결과 초기화 핸들러 (파일은 유지)
+  const handleResetAnalysis = () => {
+    setParsingResult(null);
+    setVerificationResults(null);
+    setError(null);
+    setParsedFood('');
+    setSimilarFoods([]);
+    setFoodSelectionDialogOpen(false);
+    setVerificationConfirmDialogOpen(false);
+    setDuplicateDialogOpen(false);
+    
+    // localStorage에서도 분석 상태 제거
+    if (user) {
+      try {
+        localStorage.removeItem('certificate_analysis_state');
+      } catch (error) {
+        console.error('분석 상태 삭제 오류:', error);
+      }
+    }
+  };
+  
 
 
   return (
@@ -1586,6 +1744,35 @@ const CertificateAnalysisPage = () => {
       {/* 결과 표시 영역 - 조건부 렌더링 */}
       {parsingResult && (
         <>
+          {/* 분석결과 초기화 버튼 */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            mb: 3 
+          }}>
+            <Button 
+              variant="outlined" 
+              color="warning"
+              startIcon={<CancelIcon />}
+              onClick={handleResetAnalysis}
+              sx={{
+                borderColor: labThemeTokens.colors.status.warning,
+                color: labThemeTokens.colors.status.warning,
+                fontWeight: labThemeTokens.typography.fontWeight.medium,
+                borderRadius: labThemeTokens.borderRadius.lg,
+                px: 3,
+                py: 1,
+                '&:hover': {
+                  borderColor: labThemeTokens.colors.status.warning,
+                  backgroundColor: labThemeTokens.colors.status.warning + '10',
+                  color: labThemeTokens.colors.status.warning
+                }
+              }}
+            >
+              분석결과 초기화
+            </Button>
+          </Box>
+          
           {/* 기본 정보 표시 */}
           <CertificateBasicInfo data={parsingResult} />
           

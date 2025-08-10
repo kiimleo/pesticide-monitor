@@ -167,8 +167,10 @@ const AuthForm = ({ onLogin }) => {
           localStorage.setItem('user', JSON.stringify(result.user));
           setSuccess(result.message);
           onLogin(result.user, result.token);
-          // 로그인 성공 후 홈 페이지로 리다이렉트
-          setTimeout(() => navigate('/'), 1000); // 성공 메시지를 1초간 보여준 후 리다이렉트
+          // 로그인/회원가입 성공 후 리다이렉트 처리
+          const redirectParam = new URLSearchParams(location.search).get('redirect');
+          const redirectUrl = redirectParam || '/';
+          setTimeout(() => navigate(redirectUrl), 1000); // 성공 메시지를 1초간 보여준 후 리다이렉트
         } else if (mode === 'forgot') {
           setSuccess(result.message);
           setTimeout(() => setMode('login'), 3000);

@@ -130,6 +130,9 @@ function App() {
       setToken(null);
       // 로그아웃 시 검색 기록도 초기화
       setSearchHistory([]);
+      
+      // 페이지 새로고침으로 상태 완전 초기화
+      window.location.reload();
     }
   };
 
@@ -166,7 +169,7 @@ function App() {
         <Route path="/certificate-analysis" element={
           <>
             <NewHeader user={user} onLogout={handleLogout} showNavigation={true} />
-            <CertificateAnalysisPage />
+            <CertificateAnalysisPage user={user} />
           </>
         } />
         
