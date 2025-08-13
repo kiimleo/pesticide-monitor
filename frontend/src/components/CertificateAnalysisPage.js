@@ -1178,7 +1178,7 @@ const PesticideResultsVerification = ({ results }) => {
 
 // 2. 종합 평가 컴포넌트 수정 - 검토의견이 비어있는 경우 처리
 // 종합 평가 컴포넌트에 친환경 표시 추가
-const VerificationSummary = ({ results }) => {
+const VerificationSummary = ({ results, categorySubstitutionInfo }) => {
   // 검토의견이 비어있는지 확인
   const hasEmptyReviewOpinions = results.every(result => !result.pdf_result || result.pdf_result === '-' || result.pdf_result === '');
   
@@ -1293,6 +1293,27 @@ const VerificationSummary = ({ results }) => {
             </Typography>
           </Alert>
         )}
+        
+        {/* 카테고리 대체 조회 안내 메시지 */}
+        {categorySubstitutionInfo && categorySubstitutionInfo.used_category_lookup && (
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mt: 2,
+              borderRadius: labThemeTokens.borderRadius.lg,
+              backgroundColor: labThemeTokens.colors.primary[50],
+              border: `1px solid ${labThemeTokens.colors.primary[200]}`,
+              '& .MuiAlert-icon': {
+                color: labThemeTokens.colors.primary[600]
+              }
+            }}
+          >
+            <Typography sx={{ fontWeight: labThemeTokens.typography.fontWeight.medium }}>
+              ℹ️ <strong>"{categorySubstitutionInfo.original_food}"</strong>가 식품의약품안전처에서 제공하는 데이터에 없어서 
+              분류표의 <strong>"{categorySubstitutionInfo.sub_category}"</strong>을(를) 이용하여 조회한 결과입니다.
+            </Typography>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );
@@ -1306,6 +1327,7 @@ const CertificateAnalysisPage = ({ user }) => {
   const [error, setError] = useState(null);
   const [parsingResult, setParsingResult] = useState(null);
   const [verificationResults, setVerificationResults] = useState(null);
+  const [categorySubstitutionInfo, setCategorySubstitutionInfo] = useState(null);
   // 다이얼로그 상태 추가
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   // 품목 선택 다이얼로그 상태 추가
@@ -1485,6 +1507,7 @@ const CertificateAnalysisPage = ({ user }) => {
         // 새로운 데이터 설정
         setParsingResult(response.parsing_result);
         setVerificationResults(response.verification_result);
+        setCategorySubstitutionInfo(response.category_substitution_info || null);
       }
     } catch (err) {
       console.error('Certificate analysis error:', err);
@@ -1547,6 +1570,7 @@ const CertificateAnalysisPage = ({ user }) => {
         const response = await api.uploadCertificate(formData);
         setParsingResult(response.parsing_result);
         setVerificationResults(response.verification_result);
+        setCategorySubstitutionInfo(response.category_substitution_info || null);
       } catch (err) {
         console.error('Re-analysis error:', err);
         setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
@@ -1570,6 +1594,7 @@ const CertificateAnalysisPage = ({ user }) => {
         const response = await api.uploadCertificate(formData);
         setParsingResult(response.parsing_result);
         setVerificationResults(response.verification_result);
+        setCategorySubstitutionInfo(response.category_substitution_info || null);
       } catch (err) {
         console.error('Re-analysis error:', err);
         setError(err.response?.data?.error || '재분석 중 오류가 발생했습니다.');
@@ -1588,6 +1613,7 @@ const CertificateAnalysisPage = ({ user }) => {
     setFile(null);
     setParsingResult(null);
     setVerificationResults(null);
+    setCategorySubstitutionInfo(null);
     setError(null);
     
     // 파일 인풋 초기화
@@ -1605,6 +1631,7 @@ const CertificateAnalysisPage = ({ user }) => {
     setFile(null);
     setParsingResult(null);
     setVerificationResults(null);
+    setCategorySubstitutionInfo(null);
     setError(null);
     
     // 파일 인풋 초기화
@@ -1618,6 +1645,7 @@ const CertificateAnalysisPage = ({ user }) => {
     setFile(null);
     setParsingResult(null);
     setVerificationResults(null);
+    setCategorySubstitutionInfo(null);
     setError(null);
     
     // 파일 인풋 초기화
@@ -1630,6 +1658,7 @@ const CertificateAnalysisPage = ({ user }) => {
   const handleResetAnalysis = () => {
     setParsingResult(null);
     setVerificationResults(null);
+    setCategorySubstitutionInfo(null);
     setError(null);
     setParsedFood('');
     setSimilarFoods([]);
@@ -1779,7 +1808,7 @@ const CertificateAnalysisPage = ({ user }) => {
           <PesticideResultsVerification results={verificationResults} />
           
           {/* 종합 평가 및 요약 */}
-          <VerificationSummary results={verificationResults} />
+          <VerificationSummary results={verificationResults} categorySubstitutionInfo={categorySubstitutionInfo} />
         </>
       )}
       </Container>

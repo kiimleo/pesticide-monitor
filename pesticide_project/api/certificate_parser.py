@@ -12,10 +12,127 @@ import logging
 import os
 import decimal
 from datetime import datetime
-from api.models import CertificateOfAnalysis, PesticideResult
+from api.models import CertificateOfAnalysis, PesticideResult, FoodCategory
 from api.serializers import CertificateOfAnalysisSerializer, PesticideResultSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def validate_certificate_structure(text):
+    """
+    검정증명서 필수 구조 요소 검증
+    - 공공보건 관련 중요 서비스이므로 엄격한 구조 검증 적용
+    - 표준 검정증명서 형식이 아닌 파일 차단
+    """
+    required_elements = {
+        'certificate_number': r'제\s+\d{4}-\d{5}\s+호',
+        'certificate_title': r'검\s*정\s*증\s*명\s*서|Certificate\s+of\s+Analysis',
+        'applicant_section': r'신청인|Applicant',
+        'test_section': r'검정결과|Analytical\s+Results|결과\s*\(Results\)',
+        'analytical_purpose': r'검정\s*목적|Analytical\s+Purpose',
+        'sample_description': r'검정\s*품목|Sample\s+Description',
+        'analyzed_items': r'검정\s*항목|Analyzed\s+Items',
+        'test_period': r'검정\s*기간|Date\s+of\s+Test',
+        'analytical_method': r'검정\s*방법|Analytical\s+Method'
+    }
+    
+    missing_elements = []
+    found_elements = []
+    
+    for element, pattern in required_elements.items():
+        if re.search(pattern, text, re.IGNORECASE):
+            found_elements.append(element)
+        else:
+            missing_elements.append(element)
+    
+    # 필수 요소 중 최소 6개 이상 있어야 유효한 검정증명서로 판단
+    min_required = 6
+    if len(found_elements) < min_required:
+        return False, f"검정증명서 필수 구조 요소 부족 ({len(found_elements)}/{len(required_elements)}개 발견). 누락: {', '.join(missing_elements)}"
+    
+    logger.info(f"PDF 구조 검증 성공: {len(found_elements)}/{len(required_elements)}개 요소 발견")
+    return True, "유효한 검정증명서 구조"
+
+
+def validate_issuer(text):
+    """
+    공인 발급기관 검증
+    - 승인된 검정기관에서 발급한 증명서만 처리
+    - 위조/변조된 증명서 차단
+    """
+    # 공인 검정기관 목록 (실제 승인된 기관들)
+    authorized_issuers = [
+        'TSP분석연구소',
+        'TSP인증관리원', 
+        '티에스피분석연구소',
+        '티에스피인증관리원',
+        '(주) 티에스피분석연구소',
+        '㈜ 티에스피분석연구소',
+        'TSP',
+        '농산물품질관리원',
+        '국립농산물품질관리원'
+    ]
+    
+    found_issuer = None
+    for issuer in authorized_issuers:
+        if issuer in text:
+            found_issuer = issuer
+            break
+    
+    if found_issuer:
+        logger.info(f"공인 발급기관 확인: {found_issuer}")
+        return True, f"공인 발급기관 확인: {found_issuer}"
+    else:
+        logger.warning("승인되지 않은 발급기관 또는 발급기관 정보 없음")
+        return False, "승인되지 않은 발급기관이거나 발급기관 정보를 찾을 수 없습니다"
+
+
+def provide_detailed_feedback(structure_valid, structure_msg, issuer_valid, issuer_msg, text_length):
+    """
+    상세한 검증 피드백 제공
+    - 사용자가 올바른 파일을 업로드할 수 있도록 구체적인 안내 제공
+    """
+    if structure_valid and issuer_valid:
+        return {
+            'is_valid': True,
+            'message': '유효한 검정증명서입니다.',
+            'details': [structure_msg, issuer_msg]
+        }
+    
+    feedback = {
+        'is_valid': False,
+        'error_type': 'INVALID_CERTIFICATE_FORMAT',
+        'message': '업로드한 파일이 표준 검정증명서 형식이 아닙니다.',
+        'details': [],
+        'guidance': []
+    }
+    
+    # 구조 검증 실패
+    if not structure_valid:
+        feedback['details'].append(f"구조 검증 실패: {structure_msg}")
+        feedback['guidance'].extend([
+            '✓ 완전한 검정증명서 PDF 파일인지 확인하세요',
+            '✓ 스캔된 이미지가 아닌 원본 PDF 파일을 사용하세요',
+            '✓ 파일이 손상되지 않았는지 확인하세요'
+        ])
+    
+    # 발급기관 검증 실패  
+    if not issuer_valid:
+        feedback['details'].append(f"발급기관 검증 실패: {issuer_msg}")
+        feedback['guidance'].extend([
+            '✓ TSP분석연구소 등 공인 검정기관 발급 증명서인지 확인하세요',
+            '✓ 농산물품질관리원 승인 기관의 검정증명서만 업로드 가능합니다'
+        ])
+    
+    # 텍스트 길이 문제
+    if text_length < 50:
+        feedback['details'].append("추출된 텍스트가 너무 짧음 (스캔 품질 문제 가능성)")
+        feedback['guidance'].extend([
+            '✓ PDF 스캔 품질을 확인하세요',
+            '✓ 텍스트가 선명하게 읽힐 수 있는 해상도인지 확인하세요'
+        ])
+    
+    return feedback
 
 
 def calculate_similarity(str1, str2):
@@ -106,6 +223,16 @@ def upload_certificate(request):
 
         if not parsing_result:
             return Response({'error': 'PDF 파싱에 실패했습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 검증 실패 처리 (새로 추가된 검증 로직)
+        if parsing_result.get('validation_failed'):
+            feedback = parsing_result.get('feedback', {})
+            return Response({
+                'error': feedback.get('message', 'PDF 검증 실패'),
+                'error_type': feedback.get('error_type'),
+                'details': feedback.get('details', []),
+                'guidance': feedback.get('guidance', [])
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # 이미 존재하는 증명서인지 확인
         certificate_number = parsing_result.get('certificate_number')
@@ -158,9 +285,14 @@ def upload_certificate(request):
             }
             mapped_food = FOOD_NAME_MAPPING.get(sample_description, sample_description)
             
-            # 품목명이 DB에 있는지 확인
-            food_exists = PesticideLimit.objects.filter(food_name__iexact=mapped_food).exists()
-            if not food_exists:
+            # 품목명이 DB에 있는지 확인 - PesticideLimit과 FoodCategory 모두 확인
+            food_exists_in_limits = PesticideLimit.objects.filter(food_name__iexact=mapped_food).exists()
+            food_exists_in_categories = FoodCategory.objects.filter(food_name__iexact=mapped_food).exists()
+            
+            logger.info(f"품목명 '{mapped_food}' 확인: PesticideLimit={food_exists_in_limits}, FoodCategory={food_exists_in_categories}")
+            
+            # PesticideLimit에 직접 없지만 FoodCategory에 있다면 처리 가능
+            if not food_exists_in_limits and not food_exists_in_categories:
                 # 유사 품목 검색 API 호출
                 try:
                     import requests
@@ -182,6 +314,24 @@ def upload_certificate(request):
 
         # 검증 수행
         verification_result = verify_pesticide_results(parsing_result)
+        
+        # 카테고리 대체 조회 정보 추가 (안내 메시지용)
+        category_substitution_info = None
+        sample_description = parsing_result.get('sample_description', '')
+        if sample_description:
+            # 직접 매칭 확인
+            direct_match = PesticideLimit.objects.filter(food_name__iexact=sample_description).exists()
+            category_match = FoodCategory.objects.filter(food_name__iexact=sample_description).first()
+            
+            if not direct_match and category_match:
+                # PesticideLimit에는 없지만 FoodCategory에 있는 경우
+                category_substitution_info = {
+                    'original_food': sample_description,
+                    'main_category': category_match.main_category,
+                    'sub_category': category_match.sub_category,
+                    'used_category_lookup': True
+                }
+                logger.info(f"카테고리 대체 조회 적용: {sample_description} → {category_match.sub_category}")
 
         # just for debugging
         logger.info(f"파싱 결과의 pesticide_results 키 존재: {'pesticide_results' in parsing_result}")
@@ -201,6 +351,10 @@ def upload_certificate(request):
             'verification_result': verification_result,
             'saved_data': saved_data
         }
+        
+        # 카테고리 대체 조회 정보가 있으면 추가
+        if category_substitution_info:
+            response_data['category_substitution_info'] = category_substitution_info
 
         # 디버깅을 위한 응답 구조 로깅
         logger.info(f"API 응답 구조: parsing_result 키 존재: {'parsing_result' in response_data}")
@@ -254,6 +408,31 @@ def parse_certificate_pdf(pdf_file):
         if not text or len(text.strip()) < 50:
             logger.error("추출된 텍스트가 너무 짧거나 비어있음")
             return None
+
+        # 강화된 PDF 검증 추가
+        logger.info("검정증명서 구조 및 발급기관 검증 시작")
+        
+        # 1. 구조 검증
+        structure_valid, structure_msg = validate_certificate_structure(text)
+        
+        # 2. 발급기관 검증
+        issuer_valid, issuer_msg = validate_issuer(text)
+        
+        # 3. 검증 결과 처리
+        if not structure_valid or not issuer_valid:
+            feedback = provide_detailed_feedback(
+                structure_valid, structure_msg, 
+                issuer_valid, issuer_msg, 
+                len(text.strip())
+            )
+            logger.error(f"PDF 검증 실패: {feedback['message']}")
+            logger.error(f"검증 세부사항: {feedback.get('details', [])}")
+            
+            # 검증 실패 정보를 포함한 특별한 응답 반환
+            return {
+                'validation_failed': True,
+                'feedback': feedback
+            }
 
         logger.info(f"텍스트 추출 성공 - 총 {len(text)} 글자, {text.count(chr(10))} 줄")
 
