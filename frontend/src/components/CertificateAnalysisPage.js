@@ -1185,6 +1185,9 @@ const VerificationSummary = ({ results, categorySubstitutionInfo }) => {
   // 친환경 검정 여부 확인
   const isEcoFriendly = results.length > 0 && results[0].is_eco_friendly;
   
+  // 작물체 여부 확인
+  const isPlantMaterial = results.length > 0 && results[0].is_plant_material;
+  
   // 판정여부 로직 수정
   let resultsConsistency = true;
   let inconsistentResultsCount = 0;
@@ -1251,6 +1254,21 @@ const VerificationSummary = ({ results, categorySubstitutionInfo }) => {
             }}
           >
             이 검정증명서는 <strong>친환경인증용</strong>으로, 농약 검출량이 <strong>0.01 mg/kg 미만</strong>이어야 적합 판정을 받습니다.
+          </Alert>
+        )}
+        
+        {isPlantMaterial && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 2,
+              borderRadius: labThemeTokens.borderRadius.lg,
+              backgroundColor: labThemeTokens.colors.status.warning + '10',
+              border: `1px solid ${labThemeTokens.colors.status.warning}30`
+            }}
+          >
+            이 검정증명서는 <strong>작물체</strong>이므로 표준MRL값을 제공하지 않습니다. 
+            기록된 MRL과 검토의견이 모두 "-"로 표기되어야 합니다.
           </Alert>
         )}
         

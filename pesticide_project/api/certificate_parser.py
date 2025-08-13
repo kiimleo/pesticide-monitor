@@ -135,6 +135,63 @@ def provide_detailed_feedback(structure_valid, structure_msg, issuer_valid, issu
     return feedback
 
 
+def process_plant_material_verification(pesticide_name, pesticide_name_for_db, detection_value, result, is_eco_friendly):
+    """
+    작물체에 대한 특별 검증 로직
+    - 표준 MRL: 무조건 "-"
+    - 기록된 MRL과 검토의견이 모두 "-"인지 검증
+    """
+    # 작물체의 경우 표준 MRL은 무조건 "-"
+    standard_pesticide_name = pesticide_name_for_db
+    pesticide_name_match = True  # 농약성분명 검증은 기본 통과
+    db_korea_mrl = None
+    db_korea_mrl_display = "-"
+    
+    # 작물체 검증: 기록된 MRL과 검토의견이 "-"인지 확인
+    pdf_mrl_text = result.get('korea_mrl_text', '').strip()
+    pdf_opinion = result.get('result_opinion', '').strip()
+    
+    pdf_mrl_correct = (pdf_mrl_text == '-')
+    pdf_opinion_correct = (pdf_opinion == '-')
+    
+    # 친환경 검정의 경우 특별 처리
+    if is_eco_friendly:
+        eco_friendly_threshold = decimal.Decimal('0.01')
+        pdf_calculated_result = '적합' if detection_value < eco_friendly_threshold else '부적합'
+        db_calculated_result = pdf_calculated_result
+        logger.info(f"작물체 + 친환경: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}")
+    else:
+        pdf_calculated_result = '-' if pdf_mrl_correct and pdf_opinion_correct else '확인불가'
+        db_calculated_result = '-'
+    
+    # AI 판정: 작물체는 MRL과 검토의견이 모두 "-"이어야 통과
+    is_pdf_consistent = pdf_mrl_correct and pdf_opinion_correct
+    
+    logger.info(f"작물체 검증: 농약명={pesticide_name}, "
+               f"MRL='{pdf_mrl_text}' 올바름={pdf_mrl_correct}, "
+               f"검토의견='{pdf_opinion}' 올바름={pdf_opinion_correct}, "
+               f"최종판정={is_pdf_consistent}")
+    
+    return {
+        'pesticide_name': pesticide_name,
+        'standard_pesticide_name': standard_pesticide_name,
+        'pesticide_name_match': pesticide_name_match,
+        'detection_value': detection_value,
+        'pdf_korea_mrl': None,
+        'pdf_korea_mrl_text': pdf_mrl_text,
+        'db_korea_mrl': db_korea_mrl,
+        'db_korea_mrl_display': db_korea_mrl_display,
+        'export_country': result.get('export_country'),
+        'export_mrl': result.get('export_mrl'),
+        'pdf_result': pdf_opinion,
+        'pdf_calculated_result': pdf_calculated_result,
+        'db_calculated_result': db_calculated_result,
+        'is_pdf_consistent': is_pdf_consistent,
+        'is_eco_friendly': is_eco_friendly,
+        'is_plant_material': True,  # 작물체 표시용
+    }
+
+
 def calculate_similarity(str1, str2):
     """
     두 문자열 간의 유사도를 계산 (Levenshtein 거리 기반)
@@ -318,6 +375,13 @@ def upload_certificate(request):
         # 카테고리 대체 조회 정보 추가 (안내 메시지용)
         category_substitution_info = None
         sample_description = parsing_result.get('sample_description', '')
+        
+        # 작물체 여부 확인
+        is_plant_material = False
+        if sample_description and '작물체' in sample_description:
+            is_plant_material = True
+            logger.info(f"작물체 검출: {sample_description}")
+        
         if sample_description:
             # 직접 매칭 확인
             direct_match = PesticideLimit.objects.filter(food_name__iexact=sample_description).exists()
@@ -332,6 +396,9 @@ def upload_certificate(request):
                     'used_category_lookup': True
                 }
                 logger.info(f"카테고리 대체 조회 적용: {sample_description} → {category_match.sub_category}")
+        
+        # 작물체 정보를 파싱 결과에 추가
+        parsing_result['is_plant_material'] = is_plant_material
 
         # just for debugging
         logger.info(f"파싱 결과의 pesticide_results 키 존재: {'pesticide_results' in parsing_result}")
@@ -1059,6 +1126,9 @@ def verify_pesticide_results(parsing_result):
         is_eco_friendly = True
         logger.info(f"친환경 검정 감지: {analytical_purpose}")
 
+    # 작물체 여부 확인
+    is_plant_material = parsing_result.get('is_plant_material', False)
+    
     verification_results = []
     sample_description = parsing_result.get('sample_description', '')
     mapped_sample_description = FOOD_NAME_MAPPING.get(sample_description, sample_description)
@@ -1092,6 +1162,17 @@ def verify_pesticide_results(parsing_result):
                 logger.warning(f"PDF MRL 값 변환 실패: {result['korea_mrl']}")
                 pdf_korea_mrl = None
 
+        # 작물체 특별 처리
+        if is_plant_material:
+            verification_results.append(
+                process_plant_material_verification(
+                    pesticide_name, pesticide_name_for_db, detection_value, 
+                    result, is_eco_friendly
+                )
+            )
+            continue
+
+        # 일반 식품의 경우 기존 로직 사용
         # 데이터베이스에서 정보 조회
         db_pesticide_info = None
         standard_pesticide_name = None
