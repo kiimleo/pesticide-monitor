@@ -252,6 +252,10 @@ def calculate_similarity(str1, str2):
 # 완료 → 사용자에게 결과 반환
 
 
+@csrf_exempt
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+@permission_classes([AllowAny])
 def upload_certificate(request):
     """
     검정증명서 PDF 업로드 및 파싱 전체 처리 관리자
