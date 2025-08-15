@@ -1187,12 +1187,19 @@ const VerificationSummary = ({ results, categorySubstitutionInfo }) => {
   
   // 작물체 여부 확인
   const isPlantMaterial = results.length > 0 && results[0].is_plant_material;
+  console.log('작물체 여부 확인:', isPlantMaterial, 'results[0]:', results[0]);
   
   // 판정여부 로직 수정
   let resultsConsistency = true;
   let inconsistentResultsCount = 0;
   
-  if (hasEmptyReviewOpinions) {
+  // 작물체의 경우 is_pdf_consistent 값을 직접 사용
+  if (isPlantMaterial) {
+    console.log('작물체 AI 판정 계산:', results.map(r => r.is_pdf_consistent));
+    resultsConsistency = results.every(r => r.is_pdf_consistent);
+    inconsistentResultsCount = results.filter(r => !r.is_pdf_consistent).length;
+    console.log('작물체 최종 결과:', resultsConsistency);
+  } else if (hasEmptyReviewOpinions) {
     // 검토의견이 비어있는 경우: 성분명 검증과 잔류허용기준 일치 여부만 확인
     resultsConsistency = results.every(result => 
       result.pesticide_name_match && 
@@ -1266,9 +1273,19 @@ const VerificationSummary = ({ results, categorySubstitutionInfo }) => {
               backgroundColor: labThemeTokens.colors.status.warning + '10',
               border: `1px solid ${labThemeTokens.colors.status.warning}30`
             }}
+            icon={<ErrorOutline />}
           >
-            이 검정증명서는 <strong>작물체</strong>이므로 표준MRL값을 제공하지 않습니다. 
-            기록된 MRL과 검토의견이 모두 "-"로 표기되어야 합니다.
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              ⚠️ 이 검정증명서는 <strong>작물체</strong>이므로 표준MRL값을 제공하지 않습니다.
+            </Typography>
+            <Typography variant="body2">
+              기록된 MRL과 검토의견이 모두 "-"로 표기되어야 합니다.
+              {results.some(r => r.pdf_korea_mrl_text && r.pdf_korea_mrl_text !== '-') && (
+                <Box component="span" sx={{ color: 'error.main', fontWeight: 600 }}>
+                  {' '}(⚠️ 현재 기록된 MRL: {results[0].pdf_korea_mrl_text})
+                </Box>
+              )}
+            </Typography>
           </Alert>
         )}
         

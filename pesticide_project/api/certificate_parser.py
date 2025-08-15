@@ -140,6 +140,7 @@ def process_plant_material_verification(pesticide_name, pesticide_name_for_db, d
     작물체에 대한 특별 검증 로직
     - 표준 MRL: 무조건 "-"
     - 기록된 MRL과 검토의견이 모두 "-"인지 검증
+    - 검출량은 검증하지 않고 그대로 표시
     """
     # 작물체의 경우 표준 MRL은 무조건 "-"
     standard_pesticide_name = pesticide_name_for_db
@@ -154,20 +155,27 @@ def process_plant_material_verification(pesticide_name, pesticide_name_for_db, d
     pdf_mrl_correct = (pdf_mrl_text == '-')
     pdf_opinion_correct = (pdf_opinion == '-')
     
-    # 친환경 검정의 경우 특별 처리
+    # 친환경 검정의 경우 작물체라도 검출량 검증 필요
     if is_eco_friendly:
         eco_friendly_threshold = decimal.Decimal('0.01')
         pdf_calculated_result = '적합' if detection_value < eco_friendly_threshold else '부적합'
         db_calculated_result = pdf_calculated_result
-        logger.info(f"작물체 + 친환경: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}")
+        logger.info(f"작물체 + 친환경: 검출량 {detection_value} vs 기준 {eco_friendly_threshold}, 결과: {pdf_calculated_result}")
     else:
+        # 일반 검정의 작물체는 검출량 검증하지 않음 - 계산된 결과는 항상 "-"
         pdf_calculated_result = '-' if pdf_mrl_correct and pdf_opinion_correct else '확인불가'
         db_calculated_result = '-'
+        logger.info(f"작물체 일반 검정: 검출량 검증 안함, MRL/검토의견 검증만 수행")
     
-    # AI 판정: 작물체는 MRL과 검토의견이 모두 "-"이어야 통과
-    is_pdf_consistent = pdf_mrl_correct and pdf_opinion_correct
+    # AI 판정: 작물체는 기본적으로 MRL과 검토의견이 모두 "-"이어야 통과
+    # 친환경 검정의 경우 추가로 검출량도 기준에 맞아야 함
+    if is_eco_friendly:
+        eco_detection_ok = detection_value < decimal.Decimal('0.01')
+        is_pdf_consistent = pdf_mrl_correct and pdf_opinion_correct and eco_detection_ok
+    else:
+        is_pdf_consistent = pdf_mrl_correct and pdf_opinion_correct
     
-    logger.info(f"작물체 검증: 농약명={pesticide_name}, "
+    logger.info(f"작물체 검증: 농약명={pesticide_name}, 검출량={detection_value} (검증안함), "
                f"MRL='{pdf_mrl_text}' 올바름={pdf_mrl_correct}, "
                f"검토의견='{pdf_opinion}' 올바름={pdf_opinion_correct}, "
                f"최종판정={is_pdf_consistent}")
@@ -333,9 +341,16 @@ def upload_certificate(request):
             parsing_result['sample_description'] = selected_food
             logger.info(f"품목명 사용자 선택 적용: {selected_food}")
 
-        # 품목명이 DB에 없는 경우 유사 품목 검색 필요 (사용자 선택이 없고 건너뛰기 옵션이 없는 경우만)
+        # 작물체 여부 확인 (먼저 확인)
         sample_description = parsing_result.get('sample_description', '')
-        if sample_description and not selected_food and not skip_food_validation:
+        is_plant_material = False
+        if sample_description and '작물체' in sample_description:
+            is_plant_material = True
+            logger.info(f"작물체 검출: {sample_description}")
+
+        # 품목명이 DB에 없는 경우 유사 품목 검색 필요 (사용자 선택이 없고 건너뛰기 옵션이 없는 경우만)
+        # 작물체인 경우는 팝업을 보여주지 않음
+        if sample_description and not selected_food and not skip_food_validation and not is_plant_material:
             # 기본 매핑 확인
             FOOD_NAME_MAPPING = {
                 '깻잎': '들깻잎',
@@ -369,18 +384,15 @@ def upload_certificate(request):
                 except Exception as e:
                     logger.error(f"유사 품목 검색 API 호출 오류: {str(e)}")
 
+        # 작물체 정보를 파싱 결과에 추가 (검증 전에 설정!)
+        parsing_result['is_plant_material'] = is_plant_material
+        logger.info(f"📝 parsing_result에 is_plant_material 설정: {is_plant_material}")
+
         # 검증 수행
         verification_result = verify_pesticide_results(parsing_result)
         
         # 카테고리 대체 조회 정보 추가 (안내 메시지용)
         category_substitution_info = None
-        sample_description = parsing_result.get('sample_description', '')
-        
-        # 작물체 여부 확인
-        is_plant_material = False
-        if sample_description and '작물체' in sample_description:
-            is_plant_material = True
-            logger.info(f"작물체 검출: {sample_description}")
         
         if sample_description:
             # 직접 매칭 확인
@@ -396,9 +408,6 @@ def upload_certificate(request):
                     'used_category_lookup': True
                 }
                 logger.info(f"카테고리 대체 조회 적용: {sample_description} → {category_match.sub_category}")
-        
-        # 작물체 정보를 파싱 결과에 추가
-        parsing_result['is_plant_material'] = is_plant_material
 
         # just for debugging
         logger.info(f"파싱 결과의 pesticide_results 키 존재: {'pesticide_results' in parsing_result}")
@@ -1128,6 +1137,7 @@ def verify_pesticide_results(parsing_result):
 
     # 작물체 여부 확인
     is_plant_material = parsing_result.get('is_plant_material', False)
+    logger.info(f"검증 함수에서 is_plant_material 값: {is_plant_material}")
     
     verification_results = []
     sample_description = parsing_result.get('sample_description', '')
@@ -1164,12 +1174,14 @@ def verify_pesticide_results(parsing_result):
 
         # 작물체 특별 처리
         if is_plant_material:
+            logger.info(f"🌱 작물체 특별 처리 시작: {pesticide_name}")
             verification_results.append(
                 process_plant_material_verification(
                     pesticide_name, pesticide_name_for_db, detection_value, 
                     result, is_eco_friendly
                 )
             )
+            logger.info(f"🌱 작물체 특별 처리 완료: {pesticide_name}")
             continue
 
         # 일반 식품의 경우 기존 로직 사용
