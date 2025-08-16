@@ -233,11 +233,6 @@ def calculate_similarity(str1, str2):
     return similarity
 
 
-@csrf_exempt
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-@permission_classes([AllowAny])
-
 # _____ 전체 실행 흐름 ______________
 # 업로드 → upload_certificate() 시작
 # 파싱 → parse_certificate_pdf() 호출
