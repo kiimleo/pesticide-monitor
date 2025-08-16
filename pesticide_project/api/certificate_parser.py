@@ -1,10 +1,5 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, parser_classes, permission_classes
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework import status
 from .models import PesticideLimit
 import PyPDF2
 import re
@@ -253,9 +248,6 @@ def calculate_similarity(str1, str2):
 
 
 @csrf_exempt
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-@permission_classes([AllowAny])
 def upload_certificate(request):
     """
     검정증명서 PDF 업로드 및 파싱 전체 처리 관리자
@@ -266,16 +258,16 @@ def upload_certificate(request):
     - 최종 결과를 사용자에게 JSON 형태로 반환
     """
     if 'file' not in request.FILES:
-        return Response({'error': '파일을 업로드해주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse({'error': '파일을 업로드해주세요.'}, status=400)
 
     pdf_file = request.FILES['file']
 
     # 덮어쓰기 옵션 확인
-    overwrite = request.data.get('overwrite', 'false').lower() == 'true'
+    overwrite = request.POST.get('overwrite', 'false').lower() == 'true'
     # 사용자가 선택한 품목명 확인
-    selected_food = request.data.get('selected_food', '').strip()
+    selected_food = request.POST.get('selected_food', '').strip()
     # 품목 검증 건너뛰기 옵션 확인
-    skip_food_validation = request.data.get('skip_food_validation', 'false').lower() == 'true'
+    skip_food_validation = request.POST.get('skip_food_validation', 'false').lower() == 'true'
     logger.info(f"덮어쓰기 옵션: {overwrite}")
     if selected_food:
         logger.info(f"사용자 선택 품목: {selected_food}")
@@ -284,24 +276,24 @@ def upload_certificate(request):
 
     # PDF 파일 형식 검증
     if not pdf_file.name.endswith('.pdf'):
-        return Response({'error': 'PDF 파일만 업로드 가능합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse({'error': 'PDF 파일만 업로드 가능합니다.'}, status=400)
 
     try:
         # PDF 파싱
         parsing_result = parse_certificate_pdf(pdf_file)
 
         if not parsing_result:
-            return Response({'error': 'PDF 파싱에 실패했습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'error': 'PDF 파싱에 실패했습니다.'}, status=400)
         
         # 검증 실패 처리 (새로 추가된 검증 로직)
         if parsing_result.get('validation_failed'):
             feedback = parsing_result.get('feedback', {})
-            return Response({
+            return JsonResponse({
                 'error': feedback.get('message', 'PDF 검증 실패'),
                 'error_type': feedback.get('error_type'),
                 'details': feedback.get('details', []),
                 'guidance': feedback.get('guidance', [])
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=400)
 
         # 이미 존재하는 증명서인지 확인
         certificate_number = parsing_result.get('certificate_number')
@@ -311,7 +303,7 @@ def upload_certificate(request):
             # 덮어쓰기 옵션이 없으면 기존 증명서 반환
             logger.info(f"기존 증명서 반환: {certificate_number} (덮어쓰기 없음)")
             verification_result = list(existing_certificate.pesticide_results.all().values())
-            return Response({
+            return JsonResponse({
                 'message': '이미 업로드된 검정증명서입니다.',
                 'parsing_result': CertificateOfAnalysisSerializer(existing_certificate).data,
                 'verification_result': verification_result,
@@ -321,7 +313,7 @@ def upload_certificate(request):
                     'sample_description': existing_certificate.sample_description,
                     'pesticide_count': existing_certificate.pesticide_results.count()
                 }
-            }, status=status.HTTP_200_OK)
+            }, status=200)
         elif existing_certificate and overwrite:
             # 덮어쓰기 옵션이 있으면 기존 증명서 삭제
             logger.info(f"기존 증명서 삭제: {certificate_number} (덮어쓰기)")
@@ -379,12 +371,12 @@ def upload_certificate(request):
                         data = response.json()
                         if not data.get('exact_match', False):
                             # 정확한 매칭이 없으면 사용자 선택 요구
-                            return Response({
+                            return JsonResponse({
                                 'message': f'"{sample_description}"은 데이터베이스에 없습니다. 품목명을 선택하세요.',
                                 'parsed_food': sample_description,
                                 'similar_foods': data.get('similar_foods', []),
                                 'requires_food_selection': True
-                            }, status=status.HTTP_400_BAD_REQUEST)
+                            }, status=400)
                 except Exception as e:
                     logger.error(f"유사 품목 검색 API 호출 오류: {str(e)}")
 
@@ -441,12 +433,12 @@ def upload_certificate(request):
         logger.info(f"API 응답 구조: verification_result 키 존재: {'verification_result' in response_data}")
         logger.info(f"API 응답 구조: verification_result 항목 수: {len(verification_result)}")
 
-        return Response(response_data, status=status.HTTP_201_CREATED)
+        return JsonResponse(response_data, status=201)
 
     except Exception as e:
         logger.error(f"PDF 처리 중 오류 발생: {str(e)}")
-        return Response({'error': f'PDF 처리 중 오류가 발생했습니다: {str(e)}'},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JsonResponse({'error': f'PDF 처리 중 오류가 발생했습니다: {str(e)}'},
+                        status=500)
 
 
 def parse_certificate_pdf(pdf_file):
