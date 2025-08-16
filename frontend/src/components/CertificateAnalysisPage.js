@@ -1020,8 +1020,10 @@ const PesticideResultsVerification = ({ results }) => {
                                    result.pdf_korea_mrl_text.trim() !== '' && 
                                    result.pdf_korea_mrl_text !== '-';
                 
-                // 최종 판정: 세 조건 모두 만족하면 연구원이 올바르게 작성한 것
-                const verificationStatus = result.pesticide_name_match && mrlJudgmentCorrect && hasMrlValue;
+                // 최종 판정: 작물체는 백엔드 판정 사용, 일반 식품은 프론트엔드 로직 사용
+                const verificationStatus = result.is_plant_material 
+                  ? result.is_pdf_consistent  // 작물체: 백엔드에서 MRL이 '-'인지 등을 이미 검증
+                  : (result.pesticide_name_match && mrlJudgmentCorrect && hasMrlValue);  // 일반 식품: 기존 로직
                 
                 return (
                   <TableRow 
