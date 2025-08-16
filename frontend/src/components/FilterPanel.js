@@ -96,15 +96,6 @@ const FilterPanel = ({ onFilter, onReset, prefilledFood = '' }) => {
             }}
           />
         </Box>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: labThemeTokens.colors.text.secondary,
-            pl: 5.5
-          }}
-        >
-          식품의약품안전처 고시번호 제2024-71호, 2024년 11월 14일 개정사항 반영
-        </Typography>
       </Box>
 
       <Divider sx={{ mb: 3, borderColor: labThemeTokens.colors.gray[200] }} />
