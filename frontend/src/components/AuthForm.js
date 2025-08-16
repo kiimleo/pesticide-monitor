@@ -165,6 +165,8 @@ const AuthForm = ({ onLogin }) => {
           // 로그인 성공 시 토큰 저장
           localStorage.setItem('token', result.token);
           localStorage.setItem('user', JSON.stringify(result.user));
+          // 로그인 날짜 저장 (YYYY-MM-DD 형식)
+          localStorage.setItem('loginDate', new Date().toLocaleDateString('ko-KR'));
           setSuccess(result.message);
           onLogin(result.user, result.token);
           // 로그인/회원가입 성공 후 리다이렉트 처리

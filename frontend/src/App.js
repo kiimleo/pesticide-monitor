@@ -92,6 +92,20 @@ function App() {
     // 로컬 스토리지에서 사용자 정보 확인
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
+    const loginDate = localStorage.getItem('loginDate');
+    
+    // 현재 날짜 (YYYY-MM-DD 형식)
+    const currentDate = new Date().toLocaleDateString('ko-KR');
+    
+    // 로그인 날짜가 다르면 자동 로그아웃
+    if (savedToken && loginDate && loginDate !== currentDate) {
+      console.log('날짜가 변경되어 자동 로그아웃됩니다.');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('loginDate');
+      setLoading(false);
+      return;
+    }
 
     if (savedToken && savedUser) {
       setToken(savedToken);
@@ -99,6 +113,23 @@ function App() {
     }
     setLoading(false);
   }, []);
+
+  // 날짜 변경 감지를 위한 interval 설정
+  useEffect(() => {
+    if (token) {
+      const checkDateChange = setInterval(() => {
+        const loginDate = localStorage.getItem('loginDate');
+        const currentDate = new Date().toLocaleDateString('ko-KR');
+        
+        if (loginDate && loginDate !== currentDate) {
+          console.log('날짜가 변경되어 자동 로그아웃됩니다.');
+          handleLogout();
+        }
+      }, 60000); // 1분마다 체크
+      
+      return () => clearInterval(checkDateChange);
+    }
+  }, [token]);
 
   const handleLogin = async (userData, userToken) => {
     setUser(userData);
@@ -126,6 +157,7 @@ function App() {
       // 로컬 스토리지 클리어
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('loginDate');
       setUser(null);
       setToken(null);
       // 로그아웃 시 검색 기록도 초기화
