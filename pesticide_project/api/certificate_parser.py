@@ -765,8 +765,9 @@ def extract_certificate_test_details(text):
             # 첫 번째 매칭 그룹이 없으면 두 번째 그룹 사용 (영문/한글 대응)
             value = next((g for g in match.groups() if g), None)
             if value:
-                # 괄호로 둘러싸인 레이블 제거 (예: "(Sample Description)모과" -> "모과")
-                cleaned_value = re.sub(r'\([^)]*\)', '', value).strip()
+                # 영문 레이블 괄호만 제거 (예: "(Sample Description)모과" -> "모과")
+                # 작물체 등 한국어 내용이 포함된 괄호는 보존
+                cleaned_value = re.sub(r'\([A-Za-z\s]+\)', '', value).strip()
                 
                 # #N/A 부분 제거 (특히 analytical_purpose에서)
                 if '#N/A' in cleaned_value:
