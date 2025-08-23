@@ -12,6 +12,12 @@ from api.serializers import CertificateOfAnalysisSerializer, PesticideResultSeri
 
 logger = logging.getLogger(__name__)
 
+# 모듈 로드 시 로그
+print("=" * 60)
+print("Certificate Parser module loaded!")
+print(f"Logger name: {logger.name}")
+print("=" * 60)
+
 
 def validate_certificate_structure(text):
     """
@@ -252,6 +258,9 @@ def upload_certificate(request):
     - 다른 함수들을 순서대로 호출하여 전체 과정을 관리
     - 최종 결과를 사용자에게 JSON 형태로 반환
     """
+    print(f"[CERTIFICATE UPLOAD] Request received from {request.META.get('REMOTE_ADDR', 'unknown')}")
+    logger.info(f"Certificate upload request from {request.META.get('REMOTE_ADDR', 'unknown')}")
+    
     if 'file' not in request.FILES:
         return JsonResponse({'error': '파일을 업로드해주세요.'}, status=400)
 

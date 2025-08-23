@@ -26,6 +26,10 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import requests
+import logging
+
+# 로거 설정
+logger = logging.getLogger('api')
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -51,6 +55,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @csrf_exempt
     def signup(self, request):
         """회원가입"""
+        logger.info(f"Signup attempt from {get_client_ip(request)}")
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -75,9 +80,12 @@ class UserViewSet(viewsets.ModelViewSet):
     @csrf_exempt
     def login(self, request):
         """로그인"""
+        email = request.data.get('email', 'unknown')
+        logger.info(f"Login attempt for {email} from {get_client_ip(request)}")
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
+            logger.info(f"Login successful for {user.email}")
             token, created = Token.objects.get_or_create(user=user)
             
             # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
@@ -297,6 +305,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         pesticide = request.query_params.get('pesticide', '').strip()
         food = request.query_params.get('food', '').strip()
         get_all_foods = request.query_params.get('getAllFoods', '').lower() == 'true'
+        
+        # 검색 요청 로깅
+        user_info = request.user.email if request.user.is_authenticated else f"Guest({get_client_ip(request)})"
+        logger.info(f"Pesticide search: user={user_info}, pesticide='{pesticide}', food='{food}', getAllFoods={get_all_foods}")
 
         # 게스트 사용자 쿼리 제한 확인
         if pesticide and food:  # 실제 검색 쿼리인 경우만 체크
@@ -509,8 +521,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             request.session.create()
 
         # 자동완성 로그 출력
+        user_info = request.user.email if request.user.is_authenticated else f"Guest({get_client_ip(request)})"
         if len(query) >= 2:
-            print(format_log_message('autocomplete', query=query))
+            logger.info(f"Pesticide autocomplete: user={user_info}, query='{query}'")
 
         if len(query) < 2:
             return Response([])
@@ -531,8 +544,9 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             request.session.create()
 
         # 자동완성 로그 출력
+        user_info = request.user.email if request.user.is_authenticated else f"Guest({get_client_ip(request)})"
         if len(query) >= 1: # 한글만 입력해도 자동완성 시도
-            print(format_log_message('autocomplete', query=query))
+            logger.info(f"Food autocomplete: user={user_info}, query='{query}'")
 
         if len(query) < 1:
             return Response([])
