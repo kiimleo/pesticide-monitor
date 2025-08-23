@@ -15,9 +15,33 @@ class RequestLoggingMiddleware(MiddlewareMixin):
     """
     def __init__(self, get_response):
         super().__init__(get_response)
+        self.get_response = get_response
         # 미들웨어 초기화 시 로그
         print(f"RequestLoggingMiddleware initialized with logger: {logger.name}")
         logger.info("RequestLoggingMiddleware initialized!")
+    
+    def __call__(self, request):
+        # __call__ 메소드에서도 로깅
+        print(f"[MIDDLEWARE __call__] Processing: {request.method} {request.path}")
+        
+        # 요청 시작 시간 기록
+        request._start_time = time.time()
+        
+        # 요청 정보 로깅
+        msg = f"Request: {request.method} {request.path} from {request.META.get('REMOTE_ADDR', 'unknown')}"
+        print(f"[REQUEST] {msg}")
+        logger.info(msg)
+        
+        response = self.get_response(request)
+        
+        # 응답 로깅
+        if hasattr(request, '_start_time'):
+            duration = time.time() - request._start_time
+            msg = f"Response: {request.method} {request.path} - Status: {response.status_code} - Duration: {duration:.3f}s"
+            print(f"[RESPONSE] {msg}")
+            logger.info(msg)
+        
+        return response
     
     def process_request(self, request):
         # 요청 시작 시간 기록
@@ -25,7 +49,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
         
         # 요청 정보 로깅 - print와 logger 둘 다 사용
         msg = f"Request: {request.method} {request.path} from {request.META.get('REMOTE_ADDR', 'unknown')}"
-        print(f"[REQUEST] {msg}")  # 강제로 stdout에 출력
+        print(f"[REQUEST process_request] {msg}")  # 강제로 stdout에 출력
         logger.info(msg)
         return None
     
