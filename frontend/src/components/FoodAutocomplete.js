@@ -91,14 +91,13 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
           elevation={3} 
           sx={{ 
             position: 'absolute', 
-            width: 'fit-content',
-            minWidth: '200px',
-            maxWidth: '400px',
+            width: '100%',  // 입력 필드와 같은 너비로 변경
             left: 0,
             top: '100%',
             zIndex: 1000, 
-            maxHeight: '240px', 
-            overflow: 'auto',
+            maxHeight: '300px',  // 높이 증가
+            overflowY: 'auto',
+            overflowX: 'hidden',  // 가로 스크롤 방지
             mt: 0.5,
             border: '1px solid #e0e0e0'
           }}
@@ -114,7 +113,8 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
                   py: 1,
                   px: 2,
                   minHeight: 'auto',
-                  whiteSpace: 'nowrap',
+                  whiteSpace: 'normal',  // nowrap에서 normal로 변경하여 줄바꿈 허용
+                  wordBreak: 'keep-all',  // 한글 단어 단위로 줄바꿈
                   '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
                 }}
               >
