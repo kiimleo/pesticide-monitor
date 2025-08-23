@@ -55,7 +55,7 @@ const FilterPanel = ({ onFilter, onReset, prefilledFood = '' }) => {
         borderRadius: labThemeTokens.borderRadius['2xl'],
         boxShadow: labThemeTokens.shadows.elevated,
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',  // hidden에서 visible로 변경하여 드롭다운이 잘리지 않도록 함
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -100,9 +100,9 @@ const FilterPanel = ({ onFilter, onReset, prefilledFood = '' }) => {
 
       <Divider sx={{ mb: 3, borderColor: labThemeTokens.colors.gray[200] }} />
 
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={5}>
+      <Box component="form" onSubmit={handleSubmit} sx={{ overflow: 'visible' }}>
+        <Grid container spacing={3} sx={{ overflow: 'visible' }}>
+          <Grid item xs={12} md={5} sx={{ overflow: 'visible', position: 'relative' }}>
             <FoodAutocomplete
               value={food}
               onChange={(value) => setFood(value)} 
@@ -127,7 +127,7 @@ const FilterPanel = ({ onFilter, onReset, prefilledFood = '' }) => {
             />
           </Grid>
 
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={5} sx={{ overflow: 'visible', position: 'relative' }}>
             <PesticideAutocomplete
               value={pesticide || ''}
               onChange={(value) => setPesticide(value)}

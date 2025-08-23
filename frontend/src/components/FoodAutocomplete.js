@@ -75,7 +75,7 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
   }, [wrapperRef]);
 
   return (
-    <div className="relative" ref={wrapperRef} style={{ position: 'relative' }}>
+    <div className="relative" ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <TextField
         fullWidth
         label="식품명"
@@ -91,18 +91,21 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
           elevation={3} 
           sx={{ 
             position: 'absolute', 
-            width: '100%',  // 입력 필드와 같은 너비로 변경
+            width: '100%',
+            minWidth: '100%',  // 최소 너비 보장
             left: 0,
-            top: '100%',
-            zIndex: 1000, 
-            maxHeight: '300px',  // 높이 증가
+            right: 0,  // 오른쪽도 0으로 설정
+            top: 'calc(100% + 4px)',  // 입력 필드 바로 아래
+            zIndex: 9999,  // z-index 증가
+            maxHeight: '400px',  // 높이 더 증가
             overflowY: 'auto',
-            overflowX: 'hidden',  // 가로 스크롤 방지
-            mt: 0.5,
-            border: '1px solid #e0e0e0'
+            overflowX: 'hidden',
+            border: '1px solid #e0e0e0',
+            backgroundColor: 'white',  // 배경색 명시
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'  // 그림자 추가
           }}
         >
-          <List sx={{ py: 0 }}>
+          <List sx={{ py: 0, width: '100%' }}>
             {suggestions.map((item, index) => (
               <ListItem 
                 key={index}
@@ -110,11 +113,16 @@ const FoodAutocomplete = ({ onSelect, value = '', onChange }) => {
                 onClick={() => onSuggestionClick(item)}
                 sx={{ 
                   cursor: 'pointer', 
-                  py: 1,
+                  py: 1.5,  // 패딩 증가
                   px: 2,
                   minHeight: 'auto',
-                  whiteSpace: 'normal',  // nowrap에서 normal로 변경하여 줄바꿈 허용
-                  wordBreak: 'keep-all',  // 한글 단어 단위로 줄바꿈
+                  width: '100%',  // 전체 너비 사용
+                  display: 'block',  // 블록 요소로 변경
+                  textAlign: 'left',  // 텍스트 왼쪽 정렬
+                  whiteSpace: 'normal',  // 줄바꿈 허용
+                  wordBreak: 'break-word',  // 긴 단어도 줄바꿈
+                  fontSize: '14px',  // 폰트 크기 명시
+                  lineHeight: 1.5,  // 줄 간격
                   '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
                 }}
               >
