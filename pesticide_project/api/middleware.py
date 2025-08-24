@@ -2,6 +2,19 @@ import logging
 import time
 from django.utils.deprecation import MiddlewareMixin
 
+
+class AutocompleteFilter(logging.Filter):
+    """
+    autocomplete 요청에 대한 로그를 필터링하는 클래스
+    """
+    def filter(self, record):
+        # 로그 메시지에 'autocomplete'가 포함되어 있으면 필터링 (False 반환)
+        if hasattr(record, 'getMessage'):
+            message = record.getMessage()
+            if 'autocomplete' in message:
+                return False
+        return True
+
 # 미들웨어가 로드될 때 즉시 로그 출력
 print("=" * 60)
 print("RequestLoggingMiddleware is being loaded!")
@@ -21,25 +34,31 @@ class RequestLoggingMiddleware(MiddlewareMixin):
         logger.info("RequestLoggingMiddleware initialized!")
     
     def __call__(self, request):
-        # __call__ 메소드에서도 로깅
-        print(f"[MIDDLEWARE __call__] Processing: {request.method} {request.path}")
+        # autocomplete 요청은 로깅하지 않음
+        skip_logging = 'autocomplete' in request.path
+        
+        if not skip_logging:
+            # __call__ 메소드에서도 로깅
+            print(f"[MIDDLEWARE __call__] Processing: {request.method} {request.path}")
         
         # 요청 시작 시간 기록
         request._start_time = time.time()
         
-        # 요청 정보 로깅
-        msg = f"Request: {request.method} {request.path} from {request.META.get('REMOTE_ADDR', 'unknown')}"
-        print(f"[REQUEST] {msg}")
-        logger.info(msg)
+        if not skip_logging:
+            # 요청 정보 로깅
+            msg = f"Request: {request.method} {request.path} from {request.META.get('REMOTE_ADDR', 'unknown')}"
+            print(f"[REQUEST] {msg}")
+            logger.info(msg)
         
         response = self.get_response(request)
         
-        # 응답 로깅
-        if hasattr(request, '_start_time'):
-            duration = time.time() - request._start_time
-            msg = f"Response: {request.method} {request.path} - Status: {response.status_code} - Duration: {duration:.3f}s"
-            print(f"[RESPONSE] {msg}")
-            logger.info(msg)
+        if not skip_logging:
+            # 응답 로깅
+            if hasattr(request, '_start_time'):
+                duration = time.time() - request._start_time
+                msg = f"Response: {request.method} {request.path} - Status: {response.status_code} - Duration: {duration:.3f}s"
+                print(f"[RESPONSE] {msg}")
+                logger.info(msg)
         
         return response
     

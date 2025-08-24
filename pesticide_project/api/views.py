@@ -62,6 +62,10 @@ class UserViewSet(viewsets.ModelViewSet):
             # 토큰 생성
             token, created = Token.objects.get_or_create(user=user)
             
+            # 회원가입 성공 로깅
+            client_ip = get_client_ip(request)
+            logger.info(f"👤 SIGNUP SUCCESS - User: {user.email} | Organization: {user.organization} | From: {client_ip}")
+            
             # 회원가입 성공 시 게스트 세션 쿼리 카운트 리셋
             self._reset_guest_session_query_count(request)
             
@@ -85,7 +89,8 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            logger.info(f"Login successful for {user.email}")
+            client_ip = get_client_ip(request)
+            logger.info(f"✅ LOGIN SUCCESS - User: {user.email} | Organization: {user.organization} | From: {client_ip}")
             token, created = Token.objects.get_or_create(user=user)
             
             # 로그인 성공 시 게스트 세션 쿼리 카운트 리셋
@@ -106,6 +111,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def logout(self, request):
         """로그아웃"""
         if request.user.is_authenticated:
+            client_ip = get_client_ip(request)
+            logger.info(f"🚪 LOGOUT - User: {request.user.email} | Organization: {request.user.organization} | From: {client_ip}")
             try:
                 request.user.auth_token.delete()
             except:
@@ -543,10 +550,10 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
         if not request.session.session_key:
             request.session.create()
 
-        # 자동완성 로그 출력
-        user_info = request.user.email if request.user.is_authenticated else f"Guest({get_client_ip(request)})"
-        if len(query) >= 1: # 한글만 입력해도 자동완성 시도
-            logger.info(f"Food autocomplete: user={user_info}, query='{query}'")
+        # 자동완성 로그는 너무 많아서 비활성화
+        # user_info = request.user.email if request.user.is_authenticated else f"Guest({get_client_ip(request)})"
+        # if len(query) >= 1: # 한글만 입력해도 자동완성 시도
+        #     logger.info(f"Food autocomplete: user={user_info}, query='{query}'")
 
         if len(query) < 1:
             return Response([])

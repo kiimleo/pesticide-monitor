@@ -120,11 +120,17 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        'autocomplete_filter': {
+            '()': 'api.middleware.AutocompleteFilter',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  # stdout으로 명시적 지정
-            'formatter': 'verbose'
+            'formatter': 'verbose',
+            'filters': ['autocomplete_filter']  # 필터 추가
         },
     },
     'root': {
