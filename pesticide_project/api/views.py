@@ -479,7 +479,7 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
             search_term = f"농약: {pesticide}, 식품: {food}"
 
             # 검색 로그 저장
-            SearchLog.objects.create(
+            log_entry = SearchLog.objects.create(
                 search_term=search_term,
                 pesticide_term=pesticide,
                 food_term=food,
@@ -488,7 +488,15 @@ class PesticideLimitViewSet(viewsets.ReadOnlyModelViewSet):
                 user_agent=user_agent
             )
 
-            print(f"Search logged - IP: {ip}, Terms: {search_term}, Results: {results_count}")
+            # 터미널에 검색 로그 출력 (Admin UI와 동일한 형식)
+            formatted_timestamp = log_entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\n🔍 SEARCH LOG - {formatted_timestamp}")
+            print(f"   IP ADDRESS: {ip}")
+            print(f"   PESTICIDE TERM: {pesticide}")
+            print(f"   FOOD TERM: {food}")
+            print(f"   RESULTS COUNT: {results_count}")
+            print(f"   검색 시간: {formatted_timestamp}")
+            print("-" * 80)
 
         except Exception as e:
             print(f"Error logging search: {str(e)}")
