@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
-from .models import PesticideLimit, LimitConditionCode, SearchLog, User, PasswordResetToken
+from .models import PesticideLimit, LimitConditionCode, SearchLog, User, PasswordResetToken, GuestSession
 
 @admin.register(SearchLog)
 class SearchLogAdmin(admin.ModelAdmin):
@@ -117,3 +117,76 @@ class PasswordResetTokenAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """토큰 직접 생성 방지"""
         return False
+
+@admin.register(GuestSession)
+class GuestSessionAdmin(admin.ModelAdmin):
+    list_display = ('ip_address', 'query_usage', 'session_key_short', 'can_query_display', 'created_at', 'updated_at')
+    list_filter = ('query_count', 'created_at', 'updated_at')
+    search_fields = ('ip_address', 'session_key')
+    readonly_fields = ('session_key', 'created_at', 'updated_at', 'can_query_display')
+    ordering = ('-updated_at',)
+    list_per_page = 50
+    actions = ['reset_query_count', 'delete_selected_sessions', 'delete_old_sessions']
+    
+    def session_key_short(self, obj):
+        """세션 키 앞 10자리만 표시"""
+        return f"{obj.session_key[:10]}..."
+    session_key_short.short_description = '세션 키'
+    
+    def query_usage(self, obj):
+        """쿼리 사용량 표시"""
+        return f"{obj.query_count}/5"
+    query_usage.short_description = '쿼리 사용량'
+    
+    def can_query_display(self, obj):
+        """쿼리 가능 여부 표시"""
+        if obj.can_query():
+            return "✅ 가능"
+        else:
+            return "❌ 제한됨"
+    can_query_display.short_description = '쿼리 가능'
+    
+    def reset_query_count(self, request, queryset):
+        """선택된 세션들의 쿼리 카운트 리셋"""
+        updated = queryset.update(query_count=0)
+        self.message_user(request, f'{updated}개 세션의 쿼리 카운트가 리셋되었습니다.')
+    reset_query_count.short_description = '선택된 세션의 쿼리 카운트 리셋'
+    
+    def delete_selected_sessions(self, request, queryset):
+        """선택된 세션들 삭제"""
+        count = queryset.count()
+        session_info = []
+        for session in queryset[:5]:  # 최대 5개만 표시
+            session_info.append(f"{session.ip_address} ({session.session_key[:10]}...)")
+        
+        queryset.delete()
+        
+        if count <= 5:
+            sessions_text = ', '.join(session_info)
+            self.message_user(request, f'{count}개 세션이 삭제되었습니다: {sessions_text}')
+        else:
+            first_five = ', '.join(session_info)
+            self.message_user(request, f'{count}개 세션이 삭제되었습니다 (처음 5개: {first_five}...)')
+    delete_selected_sessions.short_description = '선택된 세션 삭제'
+    
+    def delete_old_sessions(self, request, queryset):
+        """7일 이상 오래된 세션들 삭제"""
+        from datetime import timedelta
+        old_date = timezone.now() - timedelta(days=7)
+        old_sessions = queryset.filter(created_at__lt=old_date)
+        count = old_sessions.count()
+        old_sessions.delete()
+        self.message_user(request, f'{count}개의 오래된 세션이 삭제되었습니다.')
+    delete_old_sessions.short_description = '7일 이상 오래된 세션 삭제'
+    
+    fieldsets = (
+        ('세션 정보', {
+            'fields': ('session_key', 'ip_address')
+        }),
+        ('쿼리 제한', {
+            'fields': ('query_count', 'can_query_display')
+        }),
+        ('시간 정보', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
