@@ -1,7 +1,7 @@
 // path of this code: frontend/src/App.js
 
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Typography, Box, CircularProgress, Button, AppBar, Toolbar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import SearchStatistics from './components/SearchStatistics';
@@ -114,34 +114,7 @@ function App() {
     setLoading(false);
   }, []);
 
-  // 날짜 변경 감지를 위한 interval 설정
-  useEffect(() => {
-    if (token) {
-      const checkDateChange = setInterval(() => {
-        const loginDate = localStorage.getItem('loginDate');
-        const currentDate = new Date().toLocaleDateString('ko-KR');
-        
-        if (loginDate && loginDate !== currentDate) {
-          console.log('날짜가 변경되어 자동 로그아웃됩니다.');
-          handleLogout();
-        }
-      }, 60000); // 1분마다 체크
-      
-      return () => clearInterval(checkDateChange);
-    }
-  }, [token]);
-
-  const handleLogin = async (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    
-    // 로그인 후 홈페이지로 리다이렉트
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1000);
-  };
-
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       // 서버에 로그아웃 요청
       await fetch('/api/users/logout/', {
@@ -166,7 +139,34 @@ function App() {
       // 페이지 새로고침으로 상태 완전 초기화
       window.location.reload();
     }
+  }, [token]);
+
+  const handleLogin = async (userData, userToken) => {
+    setUser(userData);
+    setToken(userToken);
+    
+    // 로그인 후 홈페이지로 리다이렉트
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
   };
+
+  // 날짜 변경 감지를 위한 interval 설정
+  useEffect(() => {
+    if (token) {
+      const checkDateChange = setInterval(() => {
+        const loginDate = localStorage.getItem('loginDate');
+        const currentDate = new Date().toLocaleDateString('ko-KR');
+        
+        if (loginDate && loginDate !== currentDate) {
+          console.log('날짜가 변경되어 자동 로그아웃됩니다.');
+          handleLogout();
+        }
+      }, 60000); // 1분마다 체크
+      
+      return () => clearInterval(checkDateChange);
+    }
+  }, [token, handleLogout]);
 
   if (loading) {
     return (
